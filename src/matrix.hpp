@@ -1,14 +1,12 @@
 #ifndef MATRIX_H
 #define MATRIX_H
 
-#include <iostream>
 #include <stdexcept>
-#include <vector>
 
-#include "opencl.hpp"
+#include "device.hpp"
 
 class Matrix {
-private:
+protected:
   cl_mem buf;
   size_t rows;
   size_t cols;

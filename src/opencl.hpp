@@ -2,6 +2,8 @@
 #define OPENCL_H
 
 #include <CL/cl.h>
+#include <fstream>
+#include <stdexcept>
 
 class OpenCLException : public std::runtime_error {
 private:

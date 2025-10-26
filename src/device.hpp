@@ -3,6 +3,11 @@
 
 #include <CL/cl.h>
 
+#include <iostream>
+#include <ostream>
+#include <string>
+#include <vector>
+
 #include "opencl.hpp"
 
 class CalcEngine {
