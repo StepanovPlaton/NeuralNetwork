@@ -1,74 +1,135 @@
-#include <CL/cl.h>
-
+#include <chrono>
+#include <iostream>
+#include <random>
 #include <stdexcept>
 #include <vector>
 
-#include "device.hpp"
-#include "matrix.hpp"
+#include "./math/math.hpp"
 
-class MutableMatrix : public Matrix {
-private:
-  CalcEngine *calcEngine;
-  cl_command_queue queue;
-  cl_kernel kernel;
+typedef Matrices::CPU Matrix;
+typedef MutableMatrices::CPU MutableMatrix;
 
-public:
-  MutableMatrix(CalcEngine &calcEngine, size_t rows, size_t cols, float *matrix)
-      : Matrix(calcEngine, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, rows, cols,
-               matrix) {
-    this->calcEngine = &calcEngine;
-    kernel = calcEngine.loadKernel("matrix_mult.cl");
-    queue = clCreateCommandQueue(calcEngine.getContext(),
-                                 calcEngine.getDevice(), 0, nullptr);
-    if (!queue) {
-      throw OpenCLException(-1, "clCreateCommandQueue");
-    }
+OpenCL openCL;
+
+std::vector<float> generateRandomMatrix(int rows, int cols) {
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<float> dis(-1.0f, 1.0f);
+
+  std::vector<float> matrix(rows * cols);
+  for (int i = 0; i < rows * cols; ++i) {
+    matrix[i] = dis(gen);
   }
-
-  ~MutableMatrix() {
-    if (queue)
-      clReleaseCommandQueue(queue);
+  return matrix;
+}
+std::vector<float> generateIdentityMatrix(int size) {
+  std::vector<float> matrix(size * size, 0.0f);
+  for (int i = 0; i < size; ++i) {
+    matrix[i * size + i] = 1.0f;
   }
-
-  void mult_by(Matrix &m) {
-    if (cols != m.getRows()) {
-      throw std::invalid_argument("Invalid matrix dimensions");
-    }
-
-    cl_mem b =
-        calcEngine->createBuffer(CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
-                                 rows * m.getCols() * sizeof(float), nullptr);
-
-    calcEngine->setKernelArgs(kernel, buf, m.getBuf(), b, rows, m.getCols(),
-                              cols);
-    calcEngine->runKernel(queue, kernel, rows, m.getCols());
-
-    clReleaseMemObject(buf);
-    buf = b;
-  }
-
-  std::vector<float> exportMatrix() {
-    std::vector<float> C(rows, cols);
-    calcEngine->readResult(queue, buf, C);
-    return C;
-  }
-};
+  return matrix;
+}
 
 int main() {
-  CalcEngine calcEngine;
-  calcEngine.printDeviceInfo();
+  const int SIZE = 1024;
 
-  float matrixA[2 * 3] = {1, 2, 3, 4, 5, 6};
-  MutableMatrix a(calcEngine, 2, 3, matrixA);
+  std::cout << "Testing with " << SIZE << "x" << SIZE << " matrices..."
+            << std::endl;
 
-  float matrixB[3 * 2] = {1, 2, 3, 4, 5, 6};
-  Matrix b(calcEngine, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, 3, 2, matrixB);
+  std::vector<float> matrixA = generateRandomMatrix(SIZE, SIZE);
+  std::vector<float> matrixB = generateRandomMatrix(SIZE, SIZE);
+  std::vector<float> matrixC = generateRandomMatrix(SIZE, SIZE);
 
-  a.mult_by(b);
+  // std::vector<float> matrixA = generateIdentityMatrix(SIZE);
+  // std::vector<float> matrixB = generateIdentityMatrix(SIZE);
+  // std::vector<float> matrixC = generateIdentityMatrix(SIZE);
 
-  std::vector<float> v = a.exportMatrix();
-  for (const auto &element : v) {
-    std::cout << element << " ";
+  // Тестирование на CPU
+  {
+    std::cout << "\n=== CPU Version ===" << std::endl;
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    MutableMatrices::CPU a(SIZE, SIZE, matrixA);
+    Matrices::CPU b(SIZE, SIZE, matrixB);
+    Matrices::CPU c(SIZE, SIZE, matrixC);
+
+    auto gen_end = std::chrono::high_resolution_clock::now();
+
+    auto op_start = std::chrono::high_resolution_clock::now();
+
+    for (int i = 0; i < 10; i++) {
+      a.mult(b);
+    }
+
+    auto op_end = std::chrono::high_resolution_clock::now();
+
+    std::vector<float> v = a.toVector();
+
+    auto total_end = std::chrono::high_resolution_clock::now();
+
+    auto gen_duration =
+        std::chrono::duration_cast<std::chrono::milliseconds>(gen_end - start);
+    auto op_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+        op_end - op_start);
+    auto total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+        total_end - start);
+
+    std::cout << "Matrix generation time: " << gen_duration.count() << " ms"
+              << std::endl;
+    std::cout << "Operations time: " << op_duration.count() << " ms"
+              << std::endl;
+    std::cout << "Total time: " << total_duration.count() << " ms" << std::endl;
+
+    std::cout << "First few elements: ";
+    for (int i = 0; i < 5 && i < v.size(); ++i) {
+      std::cout << v[i] << " ";
+    }
+    std::cout << std::endl;
+  }
+
+  // Тестирование на GPU
+  {
+    std::cout << "\n=== GPU Version ===" << std::endl;
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    MutableMatrices::GPU a(SIZE, SIZE, matrixA);
+    Matrices::GPU b(SIZE, SIZE, matrixB);
+    Matrices::GPU c(SIZE, SIZE, matrixC);
+
+    auto gen_end = std::chrono::high_resolution_clock::now();
+
+    auto op_start = std::chrono::high_resolution_clock::now();
+
+    for (int i = 0; i < 10; i++) {
+      a.mult(b);
+    }
+
+    auto op_end = std::chrono::high_resolution_clock::now();
+
+    std::vector<float> v = a.toVector();
+
+    auto total_end = std::chrono::high_resolution_clock::now();
+
+    auto gen_duration =
+        std::chrono::duration_cast<std::chrono::milliseconds>(gen_end - start);
+    auto op_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+        op_end - op_start);
+    auto total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+        total_end - start);
+
+    std::cout << "Matrix generation time: " << gen_duration.count() << " ms"
+              << std::endl;
+    std::cout << "Operations time: " << op_duration.count() << " ms"
+              << std::endl;
+    std::cout << "Total time: " << total_duration.count() << " ms" << std::endl;
+
+    std::cout << "First few elements: ";
+    for (int i = 0; i < 5 && i < v.size(); ++i) {
+      std::cout << v[i] << " ";
+    }
+    std::cout << std::endl;
   }
 
   return 0;
