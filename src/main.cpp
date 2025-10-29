@@ -59,7 +59,7 @@ int main() {
     auto op_start = std::chrono::high_resolution_clock::now();
 
     for (int i = 0; i < 10; i++) {
-      a.mult(b);
+      a.mult(b, 0.2f, MutableMatrices::CPU::Activate::SIGMOID);
     }
 
     auto op_end = std::chrono::high_resolution_clock::now();
@@ -82,7 +82,7 @@ int main() {
     std::cout << "Total time: " << total_duration.count() << " ms" << std::endl;
 
     std::cout << "First few elements: ";
-    for (int i = 0; i < 5 && i < v.size(); ++i) {
+    for (size_t i = 0; i < 5 && i < v.size(); ++i) {
       std::cout << v[i] << " ";
     }
     std::cout << std::endl;
@@ -103,7 +103,7 @@ int main() {
     auto op_start = std::chrono::high_resolution_clock::now();
 
     for (int i = 0; i < 10; i++) {
-      a.mult(b);
+      a.mult(b, 0.2f, MutableMatrices::GPU::Activate::SIGMOID, 0.0f);
     }
 
     auto op_end = std::chrono::high_resolution_clock::now();
@@ -126,7 +126,7 @@ int main() {
     std::cout << "Total time: " << total_duration.count() << " ms" << std::endl;
 
     std::cout << "First few elements: ";
-    for (int i = 0; i < 5 && i < v.size(); ++i) {
+    for (size_t i = 0; i < 5 && i < v.size(); ++i) {
       std::cout << v[i] << " ";
     }
     std::cout << std::endl;

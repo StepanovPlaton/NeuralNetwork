@@ -1,8 +1,8 @@
 CXX = g++
-CXXFLAGS = -Wall -O2 -std=c++11
+CXXFLAGS = -Wall -Wextra -O2 -std=c++11
 LIBS = -lOpenCL
 TARGET = main
-SRC = main.cpp
+SRC = main.cpp ./math/opencl/opencl.cpp ./math/matrix/cpu/matrix.cpp ./math/matrix/cpu/mutable_matrix.cpp ./math/matrix/gpu/matrix.cpp ./math/matrix/gpu/mutable_matrix.cpp
 
 INCLUDES = -I"A:/Programs/OpenCL/include" 
 LIB_PATH = -L"A:/Programs/OpenCL/lib"
