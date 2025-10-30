@@ -13,7 +13,7 @@
 
 class OpenCL {
 public:
-  enum class Program { MATRIX, MATH, IMAGE_PROCESSING };
+  enum class Program { MATRIX };
 
 private:
   cl::Device device;

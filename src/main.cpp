@@ -1,133 +1,72 @@
-#include <chrono>
-#include <iostream>
-#include <random>
-#include <stdexcept>
-#include <vector>
-
 #include "./math/math.hpp"
 
-typedef Matrices::CPU Matrix;
-typedef MutableMatrices::CPU MutableMatrix;
+#include <chrono>
+#include <thread>
+
+typedef Matrices::GPU M;
+typedef MutableMatrices::GPU MM;
+
+class Layer {
+protected:
+  int features;
+  float bias;
+  MM::Activate activate;
+  float alpha;
+
+public:
+  Layer(int features, MM::Activate activate = MM::Activate::LINEAR,
+        float bias = 0.0f, float alpha = 0.0f)
+      : features(features), activate(activate), bias(bias), alpha(alpha) {}
+
+  int getFeatures() const { return features; }
+  float getBias() const { return bias; }
+  MM::Activate getActivate() const { return activate; }
+  float getAlpha() const { return alpha; }
+};
+
+class NeuralNetwork {
+private:
+  std::vector<Layer> layers;
+  std::vector<MM> weights;
+
+public:
+  NeuralNetwork(int n, std::initializer_list<Layer> l) : layers(l) {
+    weights.emplace_back(n, layers[0].getFeatures());
+    for (int i = 0; i < layers.size() - 1; i++)
+      weights.emplace_back(layers[i].getFeatures(),
+                           layers[i + 1].getFeatures());
+  }
+
+  std::vector<float> predict(std::vector<float> i) {
+    if (i.size() != weights[0].getRows())
+      std::invalid_argument("Invalid input size");
+    MM input(1, (int)i.size(), i);
+    for (size_t i = 0; i < weights.size(); i++)
+      input.mult(weights[i], layers[i + 1].getBias(),
+                 layers[i + 1].getActivate(), layers[i + 1].getAlpha());
+    return input.toVector();
+  }
+};
 
 OpenCL openCL;
 
-std::vector<float> generateRandomMatrix(int rows, int cols) {
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_real_distribution<float> dis(-1.0f, 1.0f);
-
-  std::vector<float> matrix(rows * cols);
-  for (int i = 0; i < rows * cols; ++i) {
-    matrix[i] = dis(gen);
-  }
-  return matrix;
-}
-std::vector<float> generateIdentityMatrix(int size) {
-  std::vector<float> matrix(size * size, 0.0f);
-  for (int i = 0; i < size; ++i) {
-    matrix[i * size + i] = 1.0f;
-  }
-  return matrix;
-}
-
 int main() {
-  const int SIZE = 1024;
+  NeuralNetwork nn(
+      2, {Layer(3, MM::Activate::RELU), Layer(1, MM::Activate::RELU)});
 
-  std::cout << "Testing with " << SIZE << "x" << SIZE << " matrices..."
-            << std::endl;
+  for (int i = 0; i < 10; i++) {
+    int v1 = (i / 2) % 2;
+    int v2 = i % 2;
 
-  std::vector<float> matrixA = generateRandomMatrix(SIZE, SIZE);
-  std::vector<float> matrixB = generateRandomMatrix(SIZE, SIZE);
-  std::vector<float> matrixC = generateRandomMatrix(SIZE, SIZE);
+    std::vector<float> v = {static_cast<float>(v1), static_cast<float>(v2)};
 
-  // std::vector<float> matrixA = generateIdentityMatrix(SIZE);
-  // std::vector<float> matrixB = generateIdentityMatrix(SIZE);
-  // std::vector<float> matrixC = generateIdentityMatrix(SIZE);
+    std::vector<float> r = nn.predict(v);
+    float expected = static_cast<float>(v1 ^ v2);
 
-  // Тестирование на CPU
-  {
-    std::cout << "\n=== CPU Version ===" << std::endl;
-
-    auto start = std::chrono::high_resolution_clock::now();
-
-    MutableMatrices::CPU a(SIZE, SIZE, matrixA);
-    Matrices::CPU b(SIZE, SIZE, matrixB);
-    Matrices::CPU c(SIZE, SIZE, matrixC);
-
-    auto gen_end = std::chrono::high_resolution_clock::now();
-
-    auto op_start = std::chrono::high_resolution_clock::now();
-
-    for (int i = 0; i < 10; i++) {
-      a.mult(b, 0.2f, MutableMatrices::CPU::Activate::SIGMOID);
-    }
-
-    auto op_end = std::chrono::high_resolution_clock::now();
-
-    std::vector<float> v = a.toVector();
-
-    auto total_end = std::chrono::high_resolution_clock::now();
-
-    auto gen_duration =
-        std::chrono::duration_cast<std::chrono::milliseconds>(gen_end - start);
-    auto op_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-        op_end - op_start);
-    auto total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-        total_end - start);
-
-    std::cout << "Matrix generation time: " << gen_duration.count() << " ms"
-              << std::endl;
-    std::cout << "Operations time: " << op_duration.count() << " ms"
-              << std::endl;
-    std::cout << "Total time: " << total_duration.count() << " ms" << std::endl;
-
-    std::cout << "First few elements: ";
-    for (size_t i = 0; i < 5 && i < v.size(); ++i) {
-      std::cout << v[i] << " ";
-    }
-    std::cout << std::endl;
-  }
-
-  // Тестирование на GPU
-  {
-    std::cout << "\n=== GPU Version ===" << std::endl;
-
-    auto start = std::chrono::high_resolution_clock::now();
-
-    MutableMatrices::GPU a(SIZE, SIZE, matrixA);
-    Matrices::GPU b(SIZE, SIZE, matrixB);
-    Matrices::GPU c(SIZE, SIZE, matrixC);
-
-    auto gen_end = std::chrono::high_resolution_clock::now();
-
-    auto op_start = std::chrono::high_resolution_clock::now();
-
-    for (int i = 0; i < 10; i++) {
-      a.mult(b, 0.2f, MutableMatrices::GPU::Activate::SIGMOID, 0.0f);
-    }
-
-    auto op_end = std::chrono::high_resolution_clock::now();
-
-    std::vector<float> v = a.toVector();
-
-    auto total_end = std::chrono::high_resolution_clock::now();
-
-    auto gen_duration =
-        std::chrono::duration_cast<std::chrono::milliseconds>(gen_end - start);
-    auto op_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-        op_end - op_start);
-    auto total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-        total_end - start);
-
-    std::cout << "Matrix generation time: " << gen_duration.count() << " ms"
-              << std::endl;
-    std::cout << "Operations time: " << op_duration.count() << " ms"
-              << std::endl;
-    std::cout << "Total time: " << total_duration.count() << " ms" << std::endl;
-
-    std::cout << "First few elements: ";
-    for (size_t i = 0; i < 5 && i < v.size(); ++i) {
-      std::cout << v[i] << " ";
+    std::cout << "XOR(" << v1 << ", " << v2 << ") = " << expected;
+    std::cout << " | Network: ";
+    for (size_t j = 0; j < r.size(); ++j) {
+      std::cout << r[j] << " ";
     }
     std::cout << std::endl;
   }

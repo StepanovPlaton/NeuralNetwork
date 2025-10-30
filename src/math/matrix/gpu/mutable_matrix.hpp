@@ -27,7 +27,13 @@ private:
   }
 
 public:
+  GPU(int rows, int cols);
   GPU(int rows, int cols, const std::vector<float> &matrix);
+
+  GPU(const GPU &) = delete;
+  GPU &operator=(const GPU &) = delete;
+  GPU(GPU &&other) = default;
+  GPU &operator=(GPU &&other) = default;
 
   void mult(Matrices::GPU &m, float bias = 0.0f,
             Activate type = Activate::LINEAR, float alpha = 0.01f);

@@ -1,5 +1,12 @@
 #include "mutable_matrix.hpp"
 
+MutableMatrices::GPU::GPU(int rows, int cols) : Matrices::GPU(rows, cols) {
+  for (const auto &entry : kernelsNames) {
+    kernels[entry.first] =
+        cl::Kernel(openCL.getProgram(OpenCL::Program::MATRIX), entry.second);
+  }
+}
+
 MutableMatrices::GPU::GPU(int rows, int cols, const std::vector<float> &matrix)
     : Matrices::GPU(rows, cols, matrix) {
   for (const auto &entry : kernelsNames) {

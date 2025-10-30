@@ -16,7 +16,7 @@ public:
   virtual void activate(Activate type, float alpha = 0.01f) = 0;
 
   void validateMultDimensions(T &a, T &b) const {
-    if (a.getRows() != b.getCols()) {
+    if (a.getCols() != b.getRows()) {
       throw std::invalid_argument(
           "Invalid matrix dimensions for multiplication");
     }
