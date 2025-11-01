@@ -40,7 +40,7 @@ public:
 
   cl::Device &getDevice() { return device; }
   cl::Context &getContext() { return context; }
-  cl::CommandQueue &getDefaultQueue() { return defaultQueue; }
+  const cl::CommandQueue &getDefaultQueue() { return defaultQueue; }
 
   cl::Program &getProgram(Program program);
   void printDeviceInfo() const;

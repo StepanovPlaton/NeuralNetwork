@@ -6,8 +6,7 @@
 
 #include "./math/math.hpp"
 
-typedef Matrices::CPU Matrix;
-typedef MutableMatrices::CPU MutableMatrix;
+using namespace GPU;
 
 OpenCL openCL;
 
@@ -31,40 +30,37 @@ std::vector<float> generateIdentityMatrix(int size) {
 }
 
 int main() {
-  const int SIZE = 1024;
+  const int SIZE = 48;
 
   std::cout << "Testing with " << SIZE << "x" << SIZE << " matrices..."
             << std::endl;
 
-  std::vector<float> matrixA = generateRandomMatrix(SIZE, SIZE);
-  std::vector<float> matrixB = generateRandomMatrix(SIZE, SIZE);
-  std::vector<float> matrixC = generateRandomMatrix(SIZE, SIZE);
+  // std::vector<float> matrixA = generateRandomMatrix(SIZE, SIZE);
+  // std::vector<float> matrixB = generateRandomMatrix(SIZE, SIZE);
+  // std::vector<float> matrixC = generateRandomMatrix(SIZE, SIZE);
 
-  // std::vector<float> matrixA = generateIdentityMatrix(SIZE);
-  // std::vector<float> matrixB = generateIdentityMatrix(SIZE);
-  // std::vector<float> matrixC = generateIdentityMatrix(SIZE);
+  std::vector<float> matrixA = generateIdentityMatrix(SIZE);
+  std::vector<float> matrixB = generateIdentityMatrix(SIZE);
+  std::vector<float> matrixC = generateIdentityMatrix(SIZE);
 
-  // Тестирование на CPU
+  // Тестирование на GPU
   {
-    std::cout << "\n=== CPU Version ===" << std::endl;
+    std::cout << "\n=== GPU Version ===" << std::endl;
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    MutableMatrices::CPU a(SIZE, SIZE, matrixA);
-    Matrices::CPU b(SIZE, SIZE, matrixB);
-    Matrices::CPU c(SIZE, SIZE, matrixC);
+    MatrixMath mm;
+    Matrix a(SIZE, SIZE, matrixA);
+    Matrix b(SIZE, SIZE, matrixB);
 
     auto gen_end = std::chrono::high_resolution_clock::now();
-
     auto op_start = std::chrono::high_resolution_clock::now();
-
-    for (int i = 0; i < 10; i++) {
-      a.mult(b, 0.2f, MutableMatrices::CPU::Activate::SIGMOID);
+    for (int i = 0; i < 100; ++i) {
+      Matrix x = mm.mult(a, b);
     }
-
     auto op_end = std::chrono::high_resolution_clock::now();
 
-    std::vector<float> v = a.toVector();
+    std::vector<float> v = a.toVector(&mm.getQueue());
 
     auto total_end = std::chrono::high_resolution_clock::now();
 
@@ -88,24 +84,22 @@ int main() {
     std::cout << std::endl;
   }
 
-  // Тестирование на GPU
+  // Тестирование на CPU
   {
-    std::cout << "\n=== GPU Version ===" << std::endl;
+    std::cout << "\n=== CPU Version ===" << std::endl;
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    MutableMatrices::GPU a(SIZE, SIZE, matrixA);
-    Matrices::GPU b(SIZE, SIZE, matrixB);
-    Matrices::GPU c(SIZE, SIZE, matrixC);
+    CPU::MatrixMath mm;
+    CPU::Matrix a(SIZE, SIZE, matrixA);
+    CPU::Matrix b(SIZE, SIZE, matrixB);
 
     auto gen_end = std::chrono::high_resolution_clock::now();
 
     auto op_start = std::chrono::high_resolution_clock::now();
-
-    for (int i = 0; i < 10; i++) {
-      a.mult(b, 0.2f, MutableMatrices::GPU::Activate::SIGMOID, 0.0f);
+    for (int i = 0; i < 100; ++i) {
+      CPU::Matrix x = mm.mult(a, b);
     }
-
     auto op_end = std::chrono::high_resolution_clock::now();
 
     std::vector<float> v = a.toVector();
