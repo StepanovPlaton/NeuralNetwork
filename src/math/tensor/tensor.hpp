@@ -23,10 +23,16 @@ protected:
 
 public:
   ITensor(const std::vector<int> &shape) : shape(shape) {}
-  ITensor(const ITensor &) = default;
-  ITensor &operator=(const ITensor &) = default;
-  ITensor(ITensor &&other) = default;
-  ITensor &operator=(ITensor &&other) = default;
+  ITensor(const ITensor &other) : shape(other.shape) {};
+  ITensor &operator=(const ITensor &other) {
+    shape = other.shape;
+    return *this;
+  };
+  ITensor(ITensor &&other) : shape(other.shape) {};
+  ITensor &operator=(ITensor &&other) {
+    shape = other.shape;
+    return *this;
+  };
 
   const std::vector<int> &getShape() const { return shape; }
   int getDim() const { return static_cast<int>(shape.size()); }
@@ -50,12 +56,6 @@ public:
 
 class ITensor2 {
 public:
-  ITensor2() = default;
-  ITensor2(const ITensor2 &) = default;
-  ITensor2 &operator=(const ITensor2 &) = default;
-  ITensor2(ITensor2 &&other) = default;
-  ITensor2 &operator=(ITensor2 &&other) = default;
-
   virtual int getRows() const = 0;
   virtual int getCols() const = 0;
 };

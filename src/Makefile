@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -Wall -Wextra -O2 -std=c++23
+CXXFLAGS = -Wall -Wextra -O1 -g -std=c++23 -fno-omit-frame-pointer
 LIBS = -lOpenCL
 TARGET = main
 COMMON_SRC = ./math/opencl/opencl.cpp 

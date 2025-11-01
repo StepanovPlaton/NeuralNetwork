@@ -27,7 +27,7 @@ __kernel void activate(__global float *input, __global float *output,
 }
 
 __kernel void mult_small(__global float *A, __global float *B,
-                         __global float *C, const float bias,
+                         __global float *C, __global float *bias,
                          const int activation_type, const float alpha,
                          const int M, const int N, const int K,
                          const int transpose_B) {
@@ -49,7 +49,7 @@ __kernel void mult_small(__global float *A, __global float *B,
       sum += a_val * b_val;
     }
 
-    float result = sum + bias;
+    float result = sum + bias[col];
     if (activation_type != 0) {
       result = activate_x(result, activation_type, alpha);
     }
@@ -58,7 +58,7 @@ __kernel void mult_small(__global float *A, __global float *B,
 }
 
 __kernel void mult(__global float *A, __global float *B, __global float *C,
-                   const float bias, const int activation_type,
+                   __global float *bias, const int activation_type,
                    const float alpha, const int M, const int N, const int K,
                    const int transpose_B) {
   const int tile_size = 16;
@@ -122,7 +122,7 @@ __kernel void mult(__global float *A, __global float *B, __global float *C,
   }
 
   if (global_i < M && global_j < N) {
-    float result = sum + bias;
+    float result = sum + bias[global_j];
     if (activation_type != 0) {
       result = activate_x(result, activation_type, alpha);
     }

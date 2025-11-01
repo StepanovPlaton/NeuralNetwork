@@ -75,19 +75,24 @@ class Tensor0Math : public TensorMath<Tensor0>, public ITensor0Math<Tensor0> {};
 
 class Tensor1Math : public TensorMath<Tensor1>, public ITensor1Math<Tensor1> {};
 
-class Tensor2Math : public TensorMath<Tensor2>, public ITensor2Math<Tensor2> {
+class Tensor2Math : public TensorMath<Tensor2>,
+                    public ITensor2Math<Tensor2, Tensor1> {
 public:
   Tensor2 mult(const Tensor2 &a, const Tensor2 &b, bool transpose = false,
-               float bias = 0.0f, Activation type = Activation::LINEAR,
+               const Vector *bias = nullptr,
+               Activation type = Activation::LINEAR,
                float alpha = 0.01f) override {
     validateMultDimensions(a, b, transpose);
+    if (bias != nullptr)
+      validateBiasDimensions(b, *bias, transpose);
     Tensor2 result(a.getRows(), b.getCols(), 0.0f);
     for (int i = 0; i < result.getRows(); ++i) {
       for (int j = 0; j < result.getCols(); ++j) {
         float sum = 0.0f;
         for (int k = 0; k < a.getCols(); ++k)
           sum += a(i, k) * (transpose ? b(j, k) : b(k, j));
-        result(i, j) = activate_x(sum + bias, type, alpha);
+        result(i, j) = activate_x(sum + (bias == nullptr ? 0.0f : (*bias)(j)),
+                                  type, alpha);
       }
     }
     return result;
