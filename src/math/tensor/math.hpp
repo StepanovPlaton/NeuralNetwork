@@ -35,6 +35,8 @@ public:
   virtual T mult(const T &m, float x) = 0;
   virtual T add(const T &a, const T &b, float x) = 0;
   virtual T add(const T &m, float x) = 0;
+
+  virtual void await() const = 0;
 };
 
 template <ITensor0Type T> class ITensor0Math {};
@@ -47,6 +49,7 @@ public:
                  Activation type, float alpha) = 0;
 
   void validateMultDimensions(const M &a, const M &b, bool transpose) const {
+    printf("%dx%d %dx%d\n", a.getRows(), a.getCols(), b.getRows(), b.getCols());
     if ((!transpose && a.getCols() != b.getRows()) ||
         (transpose && a.getCols() != b.getCols())) {
       throw std::invalid_argument(

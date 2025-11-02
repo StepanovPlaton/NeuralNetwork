@@ -42,7 +42,7 @@ public:
 
   const cl::CommandQueue &getQueue() const { return queue; }
 
-  void await() const { queue.finish(); }
+  void await() const override { queue.finish(); }
 
   T activate(const T &t, Activation type = Activation::LINEAR,
              float alpha = 0.0f) override {

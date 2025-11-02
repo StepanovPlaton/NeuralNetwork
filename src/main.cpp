@@ -7,37 +7,74 @@ using namespace GPU;
 
 class Layer {
 protected:
-  int inputFeatures;
   int outputFeatures;
   Vector bias;
   Activation activation;
   float alpha;
-  Matrix weights;
 
 public:
-  Layer(int inputFeatures, int outputFeatures, Activation activation,
-        Vector bias, float alpha = 0.0f)
-      : inputFeatures(inputFeatures), outputFeatures(outputFeatures),
-        bias(bias), activation(activation), alpha(alpha),
-        weights(outputFeatures, inputFeatures) {}
+  Layer(int outputFeatures, Activation activation, Vector bias,
+        float alpha = 0.0f)
+      : outputFeatures(outputFeatures), bias(bias), activation(activation),
+        alpha(alpha) {}
 
-  int getInputFeatures() const { return inputFeatures; }
   int getOuputFeatures() const { return outputFeatures; }
   Activation getActivation() const { return activation; }
   float getAlpha() const { return alpha; }
 
   const Vector &getBias() const { return bias; }
+};
+
+class ConnectedLayer : public Layer {
+protected:
+  int inputFeatures;
+  Matrix weights;
+
+  // Matrix gradients;
+  Matrix internal;
+  Matrix outputs;
+
+public:
+  ConnectedLayer(int inputFeatures, const Layer &layer)
+      : Layer(layer), inputFeatures(inputFeatures),
+        weights(layer.getOuputFeatures(), inputFeatures),
+        internal(layer.getOuputFeatures(), inputFeatures, false),
+        outputs(layer.getOuputFeatures(), inputFeatures, false) {}
+  ConnectedLayer(const Layer &a, const Layer &b)
+      : ConnectedLayer(b.getOuputFeatures(), a) {}
+
+  int getInputFeatures() const { return inputFeatures; }
   const Matrix &getWeights() const { return weights; }
 };
 
 class NeuralNetwork {
 private:
-  std::vector<Layer> layers;
+  std::vector<ConnectedLayer> layers;
 
 public:
-  NeuralNetwork(std::vector<Layer> l) : layers(l) {}
+  NeuralNetwork(int inputFeatures, std::vector<Layer> l) {
+    // employ back
+    layers.push_back(ConnectedLayer(inputFeatures, l[0]));
+    for (size_t i = 1; i < l.size(); i++)
+      layers.push_back(ConnectedLayer(l[i - 1].getOuputFeatures(), l[i]));
+  }
 
   Matrix predict(Matrix inputs) {
+    MatrixMath mm;
+    std::vector<Matrix> steps;
+    steps.push_back(inputs);
+    for (size_t i = 0; i < layers.size(); i++) {
+      Matrix internal = mm.mult(steps[steps.size() - 1], layers[i].getWeights(),
+                                true, &layers[i].getBias());
+      Matrix output = mm.activate(internal, layers[i].getActivation(),
+                                  layers[i].getAlpha());
+      steps.push_back(output);
+    }
+    mm.await();
+    return steps[steps.size() - 1];
+  }
+
+  Matrix training(Matrix inputs) {
     MatrixMath mm;
     std::vector<Matrix> steps;
     steps.push_back(inputs);
@@ -56,9 +93,11 @@ OpenCL openCL;
 
 int main() {
   NeuralNetwork nn(
-      {Layer(2, 1, Activation::SIGMOID, Vector(std::vector<float>{1.0f}))});
+      2, {Layer(3, Activation::SIGMOID,
+                Vector(std::vector<float>{0.0f, 0.0f, 0.0f})),
+          Layer(1, Activation::SIGMOID, Vector(std::vector<float>{0.0f}))});
 
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 4; i++) {
     int v1 = (i / 2) % 2;
     int v2 = i % 2;
 

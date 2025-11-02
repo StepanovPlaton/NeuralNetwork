@@ -69,6 +69,8 @@ public:
       result[i] = t[i] + x;
     return result;
   }
+
+  void await() const override {}
 };
 
 class Tensor0Math : public TensorMath<Tensor0>, public ITensor0Math<Tensor0> {};
@@ -85,7 +87,7 @@ public:
     validateMultDimensions(a, b, transpose);
     if (bias != nullptr)
       validateBiasDimensions(b, *bias, transpose);
-    Tensor2 result(a.getRows(), b.getCols(), 0.0f);
+    Tensor2 result(a.getRows(), transpose ? b.getRows() : b.getCols(), 0.0f);
     for (int i = 0; i < result.getRows(); ++i) {
       for (int j = 0; j < result.getCols(); ++j) {
         float sum = 0.0f;
