@@ -17,7 +17,7 @@ class Tensor3Math;
 
 template <ITensorType T> class TensorMath : public ITensorMath<T> {
 protected:
-  float activate_x(float x, Activation type, float alpha = 0.01f) {
+  float activateX(float x, Activation type, float alpha = 0.01f) {
     switch (type) {
     case Activation::LINEAR:
       return x;
@@ -31,10 +31,24 @@ protected:
       return (x > 0.0f) ? x : alpha * x;
     case Activation::ELU:
       return (x > 0.0f) ? x : alpha * (std::exp(x) - 1.0f);
-    case Activation::GELU:
-      return 0.5f * x *
-             (1.0f +
-              std::tanh(std::sqrt(2.0f / M_PI) * (x + 0.044715f * x * x * x)));
+    default:
+      throw std::invalid_argument("Unknown activation type");
+    }
+  }
+  float d_activateX(float f, Activation type, float alpha = 0.01f) {
+    switch (type) {
+    case Activation::LINEAR:
+      return 1.0f;
+    case Activation::SIGMOID:
+      return f * (1.0f - f);
+    case Activation::TANH:
+      return 1.0f - f * f;
+    case Activation::RELU:
+      return (f > 0.0f) ? 1.0f : 0.0f;
+    case Activation::LEAKY_RELU:
+      return (f > 0.0f) ? 1.0f : alpha;
+    case Activation::ELU:
+      return (f > 0.0f) ? 1.0f : f + alpha;
     default:
       throw std::invalid_argument("Unknown activation type");
     }
@@ -45,7 +59,15 @@ public:
              float alpha = 0.0f) override {
     T result(t.getShape(), false);
     for (size_t i = 0; i < t.getSize(); ++i) {
-      result[i] = activate_x(t[i], type, alpha);
+      result[i] = activateX(t[i], type, alpha);
+    }
+    return result;
+  }
+  T d_activate(const T &t, Activation type = Activation::LINEAR,
+               float alpha = 0.0f) override {
+    T result(t.getShape(), false);
+    for (size_t i = 0; i < t.getSize(); ++i) {
+      result[i] = d_activateX(t[i], type, alpha);
     }
     return result;
   }
@@ -79,11 +101,25 @@ class Tensor1Math : public TensorMath<Tensor1>, public ITensor1Math<Tensor1> {};
 
 class Tensor2Math : public TensorMath<Tensor2>,
                     public ITensor2Math<Tensor2, Tensor1> {
+private:
+  Tensor2 mse(const Tensor2 &a, const Tensor2 &b) {
+    Tensor2 result(a.getShape(), false);
+    for (size_t i = 0; i < result.getSize(); ++i)
+      result[i] += (a[i] - b[i]) * (a[i] - b[i]) / (float)a.getCols();
+    return result;
+  }
+  Tensor2 dmse(const Tensor2 &a, const Tensor2 &b) {
+    Tensor2 result(a.getShape(), false);
+    for (size_t i = 0; i < result.getSize(); ++i)
+      result[i] += 2 * (a[i] - b[i]) / (float)a.getCols();
+    return result;
+  }
+
 public:
-  Tensor2 mult(const Tensor2 &a, const Tensor2 &b, bool transpose = false,
-               const Vector *bias = nullptr,
-               Activation type = Activation::LINEAR,
-               float alpha = 0.01f) override {
+  Tensor2 dot(const Tensor2 &a, const Tensor2 &b, bool transpose = false,
+              const Vector *bias = nullptr,
+              Activation type = Activation::LINEAR,
+              float alpha = 0.01f) override {
     validateMultDimensions(a, b, transpose);
     if (bias != nullptr)
       validateBiasDimensions(b, *bias, transpose);
@@ -93,11 +129,30 @@ public:
         float sum = 0.0f;
         for (int k = 0; k < a.getCols(); ++k)
           sum += a(i, k) * (transpose ? b(j, k) : b(k, j));
-        result(i, j) = activate_x(sum + (bias == nullptr ? 0.0f : (*bias)(j)),
-                                  type, alpha);
+        result(i, j) =
+            activateX(sum + (bias == nullptr ? 0.0f : (*bias)(j)), type, alpha);
       }
     }
     return result;
+  }
+
+  Tensor2 loss(const Tensor2 &a, const Tensor2 &b, Loss type) override {
+    this->validateSameDimensions(a, b);
+    switch (type) {
+    case Loss::MSE:
+      return mse(a, b);
+    default:
+      throw std::invalid_argument("Unknown loss type");
+    }
+  }
+  Tensor2 d_loss(const Tensor2 &a, const Tensor2 &b, Loss type) override {
+    this->validateSameDimensions(a, b);
+    switch (type) {
+    case Loss::MSE:
+      return dmse(a, b);
+    default:
+      throw std::invalid_argument("Unknown loss type");
+    }
   }
 };
 

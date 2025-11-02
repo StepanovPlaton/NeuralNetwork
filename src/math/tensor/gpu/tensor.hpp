@@ -3,12 +3,10 @@
 #include "../../opencl/opencl.hpp"
 
 #include <algorithm>
-#include <iostream>
 #include <random>
 #include <vector>
 
 #include "../tensor.hpp"
-#include "math.hpp"
 
 extern std::mt19937 gen;
 

@@ -12,9 +12,6 @@ float activate_x(float x, const int activation_type, const float alpha) {
     return (x > 0.0f) ? x : alpha * x;
   case 5: // ELU
     return (x > 0.0f) ? x : alpha * (exp(x) - 1.0f);
-  case 6: // GELU
-    return 0.5f * x *
-           (1.0f + tanh(sqrt(2.0f / M_PI_F) * (x + 0.044715f * x * x * x)));
   default:
     return x;
   }
