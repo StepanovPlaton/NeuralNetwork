@@ -27,7 +27,7 @@
 
 ## Forward & Back propogation - это путешествие в Мордор и обратно!
 
-![back_propogation.png]()
+![](back_propogation.png)
 
 > Верная смерть. Никаких шансов на успех. Так чего же мы ждём?!
 
