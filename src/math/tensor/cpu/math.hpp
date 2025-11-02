@@ -35,20 +35,24 @@ protected:
       throw std::invalid_argument("Unknown activation type");
     }
   }
-  float d_activateX(float f, Activation type, float alpha = 0.01f) {
+  float d_activateX(float x, Activation type, float alpha = 0.01f) {
     switch (type) {
     case Activation::LINEAR:
       return 1.0f;
-    case Activation::SIGMOID:
-      return f * (1.0f - f);
-    case Activation::TANH:
-      return 1.0f - f * f;
+    case Activation::SIGMOID: {
+      float sigmoid = 1.0f / (1.0f + std::exp(-x));
+      return sigmoid * (1.0f - sigmoid);
+    }
+    case Activation::TANH: {
+      float tanh_x = std::tanh(x);
+      return 1.0f - tanh_x * tanh_x;
+    }
     case Activation::RELU:
-      return (f > 0.0f) ? 1.0f : 0.0f;
+      return (x > 0.0f) ? 1.0f : 0.0f;
     case Activation::LEAKY_RELU:
-      return (f > 0.0f) ? 1.0f : alpha;
+      return (x > 0.0f) ? 1.0f : alpha;
     case Activation::ELU:
-      return (f > 0.0f) ? 1.0f : f + alpha;
+      return (x > 0.0f) ? 1.0f : alpha * std::exp(x);
     default:
       throw std::invalid_argument("Unknown activation type");
     }
@@ -72,6 +76,13 @@ public:
     return result;
   }
 
+  T mult(const T &a, const T &b) override {
+    this->validateSameDimensions(a, b);
+    T result(a.getShape(), false);
+    for (size_t i = 0; i < a.getSize(); ++i)
+      result[i] = a[i] * b[i];
+    return result;
+  }
   T mult(const T &t, float x) override {
     T result(t.getShape(), false);
     for (size_t i = 0; i < t.getSize(); ++i)
@@ -116,19 +127,21 @@ private:
   }
 
 public:
-  Tensor2 dot(const Tensor2 &a, const Tensor2 &b, bool transpose = false,
-              const Vector *bias = nullptr,
+  Tensor2 dot(const Tensor2 &a, const Tensor2 &b, bool transpose_a = false,
+              bool transpose_b = false, const Vector *bias = nullptr,
               Activation type = Activation::LINEAR,
               float alpha = 0.01f) override {
-    validateMultDimensions(a, b, transpose);
+    validateMultDimensions(a, b, transpose_a, transpose_b);
     if (bias != nullptr)
-      validateBiasDimensions(b, *bias, transpose);
-    Tensor2 result(a.getRows(), transpose ? b.getRows() : b.getCols(), 0.0f);
+      validateBiasDimensions(b, *bias, transpose_b);
+    Tensor2 result(transpose_a ? a.getCols() : a.getRows(),
+                   transpose_b ? b.getRows() : b.getCols(), 0.0f);
     for (int i = 0; i < result.getRows(); ++i) {
       for (int j = 0; j < result.getCols(); ++j) {
         float sum = 0.0f;
         for (int k = 0; k < a.getCols(); ++k)
-          sum += a(i, k) * (transpose ? b(j, k) : b(k, j));
+          sum += (transpose_a ? a(k, i) : a(i, k)) *
+                 (transpose_b ? b(j, k) : b(k, j));
         result(i, j) =
             activateX(sum + (bias == nullptr ? 0.0f : (*bias)(j)), type, alpha);
       }
@@ -153,6 +166,17 @@ public:
     default:
       throw std::invalid_argument("Unknown loss type");
     }
+  }
+
+  Tensor1 axis_sum(const Tensor2 &m) override {
+    Tensor1 result(m.getCols(), 0.0f);
+    for (int i = 0; i < m.getCols(); ++i) {
+      float sum = 0.0f;
+      for (int j = 0; j < m.getRows(); ++j)
+        sum += m(j, i);
+      result(i) = sum;
+    }
+    return result;
   }
 };
 

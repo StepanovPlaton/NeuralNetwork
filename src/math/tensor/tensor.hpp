@@ -50,10 +50,7 @@ public:
 
 class ITensor0 {};
 
-class ITensor1 {
-public:
-  virtual int getSize() const = 0;
-};
+class ITensor1 {};
 
 class ITensor2 {
 public:

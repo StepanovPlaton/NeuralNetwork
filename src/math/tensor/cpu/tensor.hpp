@@ -172,8 +172,6 @@ public:
 
   float &operator()(int i) { return data[i]; }
   const float &operator()(int i) const { return data[i]; }
-
-  int getSize() const override { return shape[0]; }
 };
 
 class Tensor2 : public ITensor2, public Tensor {
