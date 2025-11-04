@@ -116,13 +116,13 @@ private:
   Tensor2 mse(const Tensor2 &a, const Tensor2 &b) {
     Tensor2 result(a.getShape(), false);
     for (size_t i = 0; i < result.getSize(); ++i)
-      result[i] += (a[i] - b[i]) * (a[i] - b[i]) / (float)a.getCols();
+      result[i] = (a[i] - b[i]) * (a[i] - b[i]) / (float)a.getCols();
     return result;
   }
-  Tensor2 dmse(const Tensor2 &a, const Tensor2 &b) {
+  Tensor2 d_mse(const Tensor2 &a, const Tensor2 &b) {
     Tensor2 result(a.getShape(), false);
     for (size_t i = 0; i < result.getSize(); ++i)
-      result[i] += 2 * (a[i] - b[i]) / (float)a.getCols();
+      result[i] = 2 * (a[i] - b[i]) / (float)a.getCols();
     return result;
   }
 
@@ -133,7 +133,7 @@ public:
               float alpha = 0.01f) override {
     validateMultDimensions(a, b, transpose_a, transpose_b);
     if (bias != nullptr)
-      validateBiasDimensions(b, *bias, transpose_b);
+      validateBiasDimensions(a, *bias, transpose_a);
     Tensor2 result(transpose_a ? a.getCols() : a.getRows(),
                    transpose_b ? b.getRows() : b.getCols(), 0.0f);
     for (int i = 0; i < result.getRows(); ++i) {
@@ -143,7 +143,7 @@ public:
           sum += (transpose_a ? a(k, i) : a(i, k)) *
                  (transpose_b ? b(j, k) : b(k, j));
         result(i, j) =
-            activateX(sum + (bias == nullptr ? 0.0f : (*bias)(j)), type, alpha);
+            activateX(sum + (bias == nullptr ? 0.0f : (*bias)(i)), type, alpha);
       }
     }
     return result;
@@ -162,18 +162,18 @@ public:
     this->validateSameDimensions(a, b);
     switch (type) {
     case Loss::MSE:
-      return dmse(a, b);
+      return d_mse(a, b);
     default:
       throw std::invalid_argument("Unknown loss type");
     }
   }
 
   Tensor1 axis_sum(const Tensor2 &m) override {
-    Tensor1 result(m.getCols(), 0.0f);
-    for (int i = 0; i < m.getCols(); ++i) {
+    Tensor1 result(m.getRows(), 0.0f);
+    for (int i = 0; i < m.getRows(); ++i) {
       float sum = 0.0f;
-      for (int j = 0; j < m.getRows(); ++j)
-        sum += m(j, i);
+      for (int j = 0; j < m.getCols(); ++j)
+        sum += m(i, j);
       result(i) = sum;
     }
     return result;

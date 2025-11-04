@@ -64,9 +64,9 @@ public:
       throw std::invalid_argument(
           "Invalid matrix dimensions for multiplication");
   };
-  void validateBiasDimensions(const M &a, const V &b, bool transpose) const {
-    if ((!transpose && a.getCols() != b.getSize()) ||
-        (transpose && a.getRows() != b.getSize()))
+  void validateBiasDimensions(const M &m, const V &v, bool transpose) const {
+    if ((transpose && (size_t)m.getCols() != v.getSize()) ||
+        (!transpose && (size_t)m.getRows() != v.getSize()))
       throw std::invalid_argument("Invalid matrix bias");
   };
 };
