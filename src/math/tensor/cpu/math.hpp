@@ -116,13 +116,13 @@ private:
   Tensor2 mse(const Tensor2 &a, const Tensor2 &b) {
     Tensor2 result(a.getShape(), false);
     for (size_t i = 0; i < result.getSize(); ++i)
-      result[i] = (a[i] - b[i]) * (a[i] - b[i]) / (float)a.getCols();
+      result[i] = (a[i] - b[i]) * (a[i] - b[i]) / (float)a.getSize();
     return result;
   }
   Tensor2 d_mse(const Tensor2 &a, const Tensor2 &b) {
     Tensor2 result(a.getShape(), false);
     for (size_t i = 0; i < result.getSize(); ++i)
-      result[i] = 2 * (a[i] - b[i]) / (float)a.getCols();
+      result[i] = 2 * (a[i] - b[i]) / (float)a.getSize();
     return result;
   }
 

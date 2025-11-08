@@ -7,6 +7,8 @@
 
 #include "../tensor.hpp"
 
+#include "../../../utils/output.h"
+
 extern std::mt19937 gen;
 
 namespace CPU {
@@ -52,17 +54,17 @@ public:
   const float &operator[](int index) const { return data[index]; }
 
   virtual void print() const {
-    std::cout << "Tensor(" << getDim() << "): [";
+    debugi("Tensor(%d): [", getDim());
     for (size_t i = 0; i < data.size(); ++i) {
-      std::cout << data[i];
+      debugi("%4.3f", data[i]);
       if (i > 15) {
-        std::cout << "... ";
+        debugi("... ");
         break;
       }
       if (i != data.size() - 1)
-        std::cout << ", ";
+        debugi(" ");
     }
-    std::cout << "]" << std::endl;
+    debug("]");
   }
 
   std::vector<float> toVector() const { return data; }
@@ -132,9 +134,7 @@ public:
   Tensor0(Tensor0 &&other) = default;
   Tensor0 &operator=(Tensor0 &&other) = default;
 
-  void print() const override {
-    std::cout << "Scalar: " << data[0] << std::endl;
-  }
+  void print() const override { debug("Scalar: %4.3f", data[0]); }
 
   float &value() { return data[0]; }
   const float &value() const { return data[0]; }
@@ -161,13 +161,13 @@ public:
   Tensor1 &operator=(Tensor1 &&other) = default;
 
   void print() const override {
-    std::cout << "Vector(" << shape[0] << "): [";
+    debugi("Vector(%d): [", shape[0]);
     for (size_t i = 0; i < data.size(); ++i) {
-      std::cout << data[i];
+      debugi("%4.3f", data[i]);
       if (i != data.size() - 1)
-        std::cout << ", ";
+        debugi(" ");
     }
-    std::cout << "]" << std::endl;
+    debug("]");
   }
 
   float &operator()(int i) { return data[i]; }
@@ -209,12 +209,11 @@ public:
   Tensor2 &operator=(Tensor2 &&other) = default;
 
   void print() const override {
-    std::cout << "Matrix(" << shape[0] << "x" << shape[1] << "):\n";
+    debug("Matrix(%dx%d):", shape[0], shape[1]);
     for (int i = 0; i < shape[0]; ++i) {
-      for (int j = 0; j < shape[1]; ++j) {
-        std::cout << data[i * shape[1] + j] << " ";
-      }
-      std::cout << std::endl;
+      for (int j = 0; j < shape[1]; ++j)
+        debugi("%4.3f ", data[i * shape[1] + j]);
+      debugi("\n");
     }
   }
 
@@ -265,17 +264,15 @@ public:
   Tensor3 &operator=(Tensor3 &&other) = default;
 
   void print() const override {
-    std::cout << "Tensor3(" << shape[0] << "x" << shape[1] << "x" << shape[2]
-              << "):\n";
+    debugi("Tensor3(%dx%dx%d):", shape[0], shape[1], shape[2]);
     for (int i = 0; i < shape[0]; ++i) {
-      std::cout << "Slice " << i << ":\n";
+      debug("Slice %d", i);
       for (int j = 0; j < shape[1]; ++j) {
-        for (int k = 0; k < shape[2]; ++k) {
-          std::cout << data[i * shape[1] * shape[2] + j * shape[2] + k] << " ";
-        }
-        std::cout << std::endl;
+        for (int k = 0; k < shape[2]; ++k)
+          debugi("%4.3f ", data[i * shape[1] * shape[2] + j * shape[2] + k]);
+        debugi("\n");
       }
-      std::cout << std::endl;
+      debugi("\n");
     }
   }
 
