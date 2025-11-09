@@ -1,6 +1,6 @@
 #include <array>
-#include <iostream>
 #include <random>
+#include <sstream>
 #include <stdexcept>
 #include <type_traits>
 #include <vector>
@@ -270,48 +270,49 @@ public:
     }
   }
 
-  void print() const {
+  std::string toString() const {
+    std::ostringstream oss;
     if constexpr (Dim == 0) {
-      std::cout << "Scalar<" << typeid(T).name() << ">: " << data_[0]
-                << std::endl;
+      oss << "Scalar<" << typeid(T).name() << ">: " << data_[0];
     } else if constexpr (Dim == 1) {
-      std::cout << "Vector<" << typeid(T).name() << ">(" << shape_[0] << "): [";
+      oss << "Vector<" << typeid(T).name() << ">(" << shape_[0] << "): [";
       for (size_t i = 0; i < data_.size(); ++i) {
-        std::cout << data_[i];
+        oss << data_[i];
         if (i < data_.size() - 1)
-          std::cout << ", ";
+          oss << ", ";
       }
-      std::cout << "]" << std::endl;
+      oss << "]";
     } else if constexpr (Dim == 2) {
-      std::cout << "Matrix<" << typeid(T).name() << ">(" << shape_[axes_[0]]
-                << "x" << shape_[axes_[1]] << "):" << std::endl;
+      oss << "Matrix<" << typeid(T).name() << ">(" << shape_[axes_[0]] << "x"
+          << shape_[axes_[1]] << "):";
       for (size_t i = 0; i < shape_[axes_[0]]; ++i) {
-        std::cout << "  [";
+        oss << "\n  [";
         for (size_t j = 0; j < shape_[axes_[1]]; ++j) {
-          std::cout << (*this)(i, j);
+          oss << (*this)(i, j);
           if (j < shape_[axes_[1]] - 1)
-            std::cout << ", ";
+            oss << ", ";
         }
-        std::cout << "]" << std::endl;
+        oss << "]";
       }
     } else {
-      std::cout << "Tensor" << Dim << "D<" << typeid(T).name() << ">" << "[";
+      oss << "Tensor" << Dim << "D<" << typeid(T).name() << ">" << "[";
       for (size_t i = 0; i < Dim; ++i) {
-        std::cout << shape_[axes_[i]];
+        oss << shape_[axes_[i]];
         if (i < Dim - 1)
-          std::cout << "x";
+          oss << "x";
       }
-      std::cout << "]: [";
+      oss << "]: [";
       size_t show = std::min(data_.size(), size_t(10));
       for (size_t i = 0; i < show; ++i) {
-        std::cout << data_[i];
+        oss << data_[i];
         if (i < show - 1)
-          std::cout << ", ";
+          oss << ", ";
       }
       if (data_.size() > 10)
-        std::cout << ", ...";
-      std::cout << "]" << std::endl;
+        oss << ", ...";
+      oss << "]";
     }
+    return oss.str();
   }
 };
 
