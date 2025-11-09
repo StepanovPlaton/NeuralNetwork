@@ -1,2 +1,7 @@
 .vscode
+
 *.exe
+*.so
+*.pyd
+
+src/tensor/build

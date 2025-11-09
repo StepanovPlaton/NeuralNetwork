@@ -1,0 +1,39 @@
+CXX = g++
+CXXFLAGS = -Wall -Wextra -O1 -g -std=c++23
+
+ifeq ($(OS),Windows_NT)
+    DETECTED_OS := Windows
+else
+    DETECTED_OS := $(shell uname -s)
+endif
+ifeq ($(DETECTED_OS),Windows)
+	TARGET = main.exe
+    MKDIR = powershell -Command "mkdir"
+    SHARED_LIB_EXT = pyd
+else
+	TARGET = main
+    MKDIR = mkdir -p
+    SHARED_LIB_EXT = so
+endif
+
+BUILD_DIR = build
+COMMON_SRC = tensor.cpp
+
+PYTHON_PATH = $(shell python -c "from sysconfig import get_paths; print(get_paths()['data'])")
+PYTHON_INCLUDE = $(PYTHON_PATH)\include
+PYTHON_LIBS = $(PYTHON_PATH)\libs
+PYBIND_INCLUDE = $(shell python -c "import pybind11; print(pybind11.get_include())")
+
+.DEFAULT_GOAL := $(TARGET)
+
+$(BUILD_DIR):
+	$(MKDIR) $(BUILD_DIR)
+
+$(TARGET): $(COMMON_SRC) main.cpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -o $@ $^
+
+module: $(COMMON_SRC) pybind.cpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -shared -fPIC -o tensor.$(SHARED_LIB_EXT) $^ -I"$(PYTHON_INCLUDE)" -L"$(PYTHON_LIBS)" -lpython313 -I"$(PYBIND_INCLUDE)"
+
+clean:
+	rm -rf $(BUILD_DIR) $(TARGET) *.$(SHARED_LIB_EXT)

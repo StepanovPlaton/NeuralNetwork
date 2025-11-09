@@ -13,16 +13,16 @@
 
 class OpenCL {
 public:
-  enum class Program { MATRIX };
+  enum class Program { TENSOR };
 
 private:
   cl::Device device;
   cl::Context context;
-  cl::CommandQueue defaultQueue;
+  cl::CommandQueue queue;
 
   std::unordered_map<Program, cl::Program> programs;
   std::unordered_map<Program, std::string> programPaths = {
-      {Program::MATRIX, "./kernels/matrix.cl"}};
+      {Program::TENSOR, "./opencl/kernels/tensor.cl"}};
 
   std::string readProgram(const std::string &filePath);
   cl::Program compileProgram(const std::string &file);
@@ -40,10 +40,8 @@ public:
 
   cl::Device &getDevice() { return device; }
   cl::Context &getContext() { return context; }
-  const cl::CommandQueue &getDefaultQueue() { return defaultQueue; }
+  const cl::CommandQueue &getQueue() { return queue; }
 
   cl::Program &getProgram(Program program);
   void printDeviceInfo() const;
 };
-
-extern OpenCL openCL;
