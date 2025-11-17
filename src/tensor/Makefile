@@ -26,13 +26,17 @@ PYTHON_INCLUDE = $(shell python -c "import sysconfig; print(sysconfig.get_config
 PYTHON_LIBS = $(PYTHON_PATH)$(SP)libs
 PYBIND_INCLUDE = $(shell python -c "import pybind11; print(pybind11.get_include())")
 
+OPENCL_INCLUDES = -I"A:/Programs/OpenCL/include" 
+OPENCL_LIB_PATH = -L"A:/Programs/OpenCL/lib" -lOpenCL
+OPENCL_LIB = -L"A:/Programs/OpenCL/lib" -lOpenCL
+
 .DEFAULT_GOAL := $(TARGET)
 
 $(BUILD_DIR):
 	$(MKDIR) $(BUILD_DIR)
 
 $(TARGET): $(COMMON_SRC) main.cpp | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) $(OPENCL_INCLUDES) $(OPENCL_LIB_PATH) -o $@ $^ $(OPENCL_LIB)
 
 module: $(COMMON_SRC) pybind.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -shared -fPIC -o tensor.$(SHARED_LIB_EXT) $^ -I"$(PYTHON_INCLUDE)" -L"$(PYTHON_LIBS)" -lpython3.13 -I"$(PYBIND_INCLUDE)"

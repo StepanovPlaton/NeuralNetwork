@@ -70,4 +70,4 @@ public:
   void printDeviceInfo() const;
 };
 
-OpenCL openCL;
+extern OpenCL openCL;

@@ -4,12 +4,13 @@
 
 #include "../tensor.hpp"
 
+#include <iostream>
 #include <random>
-
+#include <sstream>
 template <typename T, int Dim> class Tensor : public ITensor<T, Dim> {
 private:
   cl::Buffer *data_ = nullptr;
-  cl::Event *event_ = new cl::Event();
+  cl::Event event_ = cl::Event();
 
   class AutoEventList {
   private:
@@ -19,7 +20,7 @@ private:
     AutoEventList(std::initializer_list<cl::Event> events) : events_(events) {}
     operator const std::vector<cl::Event> *() const { return &events_; }
   };
-  template <typename... Events> AutoEventList all(Events &&...events) {
+  template <typename... Events> AutoEventList all(Events &&...events) const {
     return AutoEventList{std::forward<Events>(events)...};
   }
 
@@ -32,16 +33,15 @@ private:
 
   void fillBuf(const std::vector<T> &data) {
     createBuf(data.size());
-    // event_ = event?!
     openCL.getQueue().enqueueWriteBuffer(*data_, CL_FALSE, 0,
                                          data.size() * sizeof(T), data.data(),
-                                         all(*event_), event_);
+                                         nullptr, &event_);
   }
   void fillBuf(const Tensor &other) {
     createBuf(other.getSize());
-    openCL.getQueue().enqueueCopyBuffer(
-        *other.getData(), *data_, 0, 0, other.getSize() * sizeof(T),
-        all(*event_, *other.getEvent()), event_);
+    openCL.getQueue().enqueueCopyBuffer(*other.getData(), *data_, 0, 0,
+                                        other.getSize() * sizeof(T),
+                                        all(other.getEvent()), &event_);
   }
 
 public:
@@ -97,7 +97,7 @@ public:
   Tensor(Tensor &&other) noexcept : ITensor(std::move(other)) {
     data_ = other.data_;
     event_ = other.event_;
-    other.data = nullptr;
+    other.data_ = nullptr;
   }
   Tensor &operator=(Tensor &&other) noexcept {
     ITensor::operator=(std::move(other));
@@ -112,7 +112,7 @@ public:
   };
 
   const cl::Buffer *getData() const { return data_; }
-  const cl::Event *getEvent() const { return event_; }
+  const cl::Event &getEvent() const { return event_; }
 
   // T &operator[](size_t i);
   // const T &operator[](size_t i) const;
@@ -128,7 +128,7 @@ public:
     kernel.setArg(0, *data_);
     openCL.getQueue().enqueueNDRangeKernel(kernel, cl::NullRange,
                                            cl::NDRange(getSize()),
-                                           cl::NullRange, all(*event_), event_);
+                                           cl::NullRange, all(event_), &event_);
     return *this;
   }
 
@@ -137,7 +137,7 @@ public:
     kernel.setArg(0, *data_);
     openCL.getQueue().enqueueNDRangeKernel(kernel, cl::NullRange,
                                            cl::NDRange(getSize()),
-                                           cl::NullRange, all(*event_), event_);
+                                           cl::NullRange, all(event_), &event_);
     return *this;
   }
 
@@ -147,7 +147,7 @@ public:
     kernel.setArg(1, scalar);
     openCL.getQueue().enqueueNDRangeKernel(kernel, cl::NullRange,
                                            cl::NDRange(getSize()),
-                                           cl::NullRange, all(*event_), event_);
+                                           cl::NullRange, all(event_), &event_);
     return *this;
   }
 
@@ -157,7 +157,7 @@ public:
     kernel.setArg(1, scalar);
     openCL.getQueue().enqueueNDRangeKernel(kernel, cl::NullRange,
                                            cl::NDRange(getSize()),
-                                           cl::NullRange, all(*event_), event_);
+                                           cl::NullRange, all(event_), &event_);
     return *this;
   }
 
@@ -167,7 +167,7 @@ public:
     kernel.setArg(1, *other.getData());
     openCL.getQueue().enqueueNDRangeKernel(
         kernel, cl::NullRange, cl::NDRange(getSize()), cl::NullRange,
-        all(*event_, *other.event_), event_);
+        all(event_, other.event_), &event_);
     return *this;
   }
 
@@ -177,7 +177,7 @@ public:
     kernel.setArg(1, *other.getData());
     openCL.getQueue().enqueueNDRangeKernel(
         kernel, cl::NullRange, cl::NDRange(getSize()), cl::NullRange,
-        all(*event_, *other.event_), event_);
+        all(event_, other.event_), &event_);
     return *this;
   }
 
@@ -191,9 +191,9 @@ public:
       if (shape_[axes_[1]] != other.shape_[other.axes_[0]])
         throw std::invalid_argument(
             "Matrix dimensions must match for multiplication");
-      size_t m = shape_[axes_[0]];
-      size_t k = shape_[axes_[1]];
-      size_t n = other.shape_[other.axes_[1]];
+      int m = (int)shape_[axes_[0]];
+      int k = (int)shape_[axes_[1]];
+      int n = (int)other.shape_[other.axes_[1]];
       Tensor<T, 2> result({m, n});
       cl::Kernel kernel = openCL.createKernel(OpenCL::Method::T_MULT);
       kernel.setArg(0, *data_);
@@ -207,12 +207,58 @@ public:
       cl::NDRange local_size(TILE_SIZE, TILE_SIZE);
       openCL.getQueue().enqueueNDRangeKernel(
           kernel, cl::NullRange, global_size, local_size,
-          all(*event_, *other.event_), result.event_);
+          all(event_, other.event_), &result.event_);
       return result;
     }
   }
 
-  std::string toString() const override;
+  std::string toString() const override {
+    std::vector<float> result(getSize());
+    openCL.getQueue().enqueueReadBuffer(
+        *data_, CL_TRUE, 0, getSize() * sizeof(T), result.data(), all(event_));
+    std::ostringstream oss;
+    if constexpr (Dim == 0) {
+      oss << "Scalar<" << typeid(T).name() << ">: " << result[0];
+    } else if constexpr (Dim == 1) {
+      oss << "Vector<" << typeid(T).name() << ">(" << shape_[0] << "): [";
+      for (size_t i = 0; i < getSize(); ++i) {
+        oss << result[i];
+        if (i < getSize() - 1)
+          oss << ", ";
+      }
+      oss << "]";
+    } else if constexpr (Dim == 2) {
+      oss << "Matrix<" << typeid(T).name() << ">(" << shape_[axes_[0]] << "x"
+          << shape_[axes_[1]] << "):";
+      for (size_t i = 0; i < shape_[axes_[0]]; ++i) {
+        oss << "\n  [";
+        for (size_t j = 0; j < shape_[axes_[1]]; ++j) {
+          oss << result[i * shape_[axes_[0]] + j];
+          if (j < shape_[axes_[1]] - 1)
+            oss << ", ";
+        }
+        oss << "]";
+      }
+    } else {
+      oss << "Tensor" << Dim << "D<" << typeid(T).name() << ">" << "[";
+      for (size_t i = 0; i < Dim; ++i) {
+        oss << shape_[axes_[i]];
+        if (i < Dim - 1)
+          oss << "x";
+      }
+      oss << "]: [";
+      size_t show = std::min(getSize(), size_t(10));
+      for (size_t i = 0; i < show; ++i) {
+        oss << result[i];
+        if (i < show - 1)
+          oss << ", ";
+      }
+      if (getSize() > 10)
+        oss << ", ...";
+      oss << "]";
+    }
+    return oss.str();
+  }
 };
 
 #include "tensor.tpp"
