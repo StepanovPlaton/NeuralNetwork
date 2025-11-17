@@ -8,10 +8,7 @@
 // ===== CONSTRUCTORS =====
 template <typename T, int Dim>
 Tensor<T, Dim>::Tensor(const std::array<size_t, Dim> &shape) : ITensor(shape) {
-  size_t size = 1;
-  for (size_t dim : shape)
-    size *= dim;
-  data_.resize(size);
+  data_.resize(getSize());
 }
 template <typename T, int Dim>
 Tensor<T, Dim>::Tensor(const std::array<size_t, Dim> &shape, T value)

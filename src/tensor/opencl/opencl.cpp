@@ -77,7 +77,8 @@ void OpenCL::initializeDevice() {
 
   device = devices[0];
   context = cl::Context(device);
-  queue = cl::CommandQueue(context, device);
+  queue =
+      cl::CommandQueue(context, device, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE);
 
   std::cout << "Using device: " << device.getInfo<CL_DEVICE_NAME>()
             << "\nPlatform: " << platforms[0].getInfo<CL_PLATFORM_NAME>()
