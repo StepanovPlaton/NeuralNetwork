@@ -1,8 +1,9 @@
-#include "tensor.hpp"
+#include "cpu/tensor.hpp"
+
 #include <iostream>
 
 int main() {
-  Tensor<float, 2> a = Tensors::rand<float>(1, 3);
+  Tensor<float, 2> a = Tensor<float, 2>({2, 4});
   std::cout << a.toString();
   return 0;
 }

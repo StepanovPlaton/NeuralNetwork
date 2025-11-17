@@ -4,16 +4,11 @@
 #define CL_HPP_TARGET_OPENCL_VERSION 300
 #include <CL/opencl.hpp>
 
-#include <fstream>
-#include <iostream>
-#include <memory>
-#include <sstream>
-#include <stdexcept>
 #include <unordered_map>
 
 class OpenCL {
 public:
-  enum class Program { TENSOR };
+  enum class Program { ATOMIC, SCALAR, TENSOR, FUSION };
 
 private:
   cl::Device device;
@@ -22,7 +17,10 @@ private:
 
   std::unordered_map<Program, cl::Program> programs;
   std::unordered_map<Program, std::string> programPaths = {
-      {Program::TENSOR, "./opencl/kernels/tensor.cl"}};
+      {Program::ATOMIC, "./opencl/kernels/atomic.cl"},
+      {Program::SCALAR, "./opencl/kernels/scalar.cl"},
+      {Program::TENSOR, "./opencl/kernels/tensor.cl"},
+      {Program::FUSION, "./opencl/kernels/fusion.cl"}};
 
   std::string readProgram(const std::string &filePath);
   cl::Program compileProgram(const std::string &file);

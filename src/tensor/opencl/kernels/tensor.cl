@@ -1,4 +1,15 @@
-float activate_x(float x, const int activation_type, const float alpha) {
+__kernel void add(__global float *A, __global float *B, __global float *C,
+                  float x) {
+  int i = get_global_id(0);
+  C[i] = A[i] + (B[i] * x);
+}
+__kernel void mult(__global float *A, __global float *B, __global float *C,
+                  float x) {
+  int i = get_global_id(0);
+  C[i] = A[i] * (B[i] * x);
+}
+
+float activate(float x, const int activation_type, const float alpha) {
   switch (activation_type) {
   case 0: // LINEAR
     return x;
@@ -15,12 +26,6 @@ float activate_x(float x, const int activation_type, const float alpha) {
   default:
     return x;
   }
-}
-
-__kernel void activate(__global float *input, __global float *output,
-                       const int activation_type, const float alpha) {
-  int i = get_global_id(0);
-  output[i] = activate_x(input[i], activation_type, alpha);
 }
 
 __kernel void mult_small(__global float *A, __global float *B,
@@ -48,7 +53,7 @@ __kernel void mult_small(__global float *A, __global float *B,
 
     float result = sum + bias[col];
     if (activation_type != 0) {
-      result = activate_x(result, activation_type, alpha);
+      result = activate(result, activation_type, alpha);
     }
     C[row * N + col] = result;
   }
@@ -121,24 +126,9 @@ __kernel void mult(__global float *A, __global float *B, __global float *C,
   if (global_i < M && global_j < N) {
     float result = sum + bias[global_j];
     if (activation_type != 0) {
-      result = activate_x(result, activation_type, alpha);
+      result = activate(result, activation_type, alpha);
     }
     C[global_i * N + global_j] = result;
   }
 }
 
-__kernel void mult_sc(__global float *A, __global float *B, float scalar) {
-  int i = get_global_id(0);
-  B[i] = A[i] * scalar;
-}
-
-__kernel void add(__global float *A, __global float *B, __global float *C,
-                  float x) {
-  int i = get_global_id(0);
-  C[i] = A[i] + (B[i] * x);
-}
-
-__kernel void add_sc(__global float *A, __global float *B, float scalar) {
-  int i = get_global_id(0);
-  B[i] = A[i] + scalar;
-}

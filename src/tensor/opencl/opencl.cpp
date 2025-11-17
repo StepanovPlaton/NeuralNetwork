@@ -1,5 +1,10 @@
 #include "opencl.hpp"
 
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <stdexcept>
+
 std::string OpenCL::readProgram(const std::string &filePath) {
   std::ifstream file(filePath, std::ios::binary);
   if (!file.is_open()) {

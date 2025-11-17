@@ -19,7 +19,7 @@ else
 endif
 
 BUILD_DIR = build
-COMMON_SRC = tensor.cpp
+COMMON_SRC = 
 
 PYTHON_PATH = $(shell python -c "from sysconfig import get_paths; print(get_paths()['data'])")
 PYTHON_INCLUDE = $(shell python -c "import sysconfig; print(sysconfig.get_config_var('CONFINCLUDEPY'))")
