@@ -35,34 +35,33 @@ public:
   Tensor &transpose(int axis_a, int axis_b);
   Tensor &t();
 
-  // === Operators ===
-  virtual Tensor operator+() const = 0;
-  virtual Tensor operator-() const = 0;
+  virtual Tensor operator+() = 0;
+  virtual Tensor operator-() = 0;
 
-  virtual Tensor &operator+=(const T &scalar) = 0;
-  virtual Tensor &operator*=(const T &scalar) = 0;
+  virtual Tensor &operator+=(const T scalar) = 0;
+  virtual Tensor &operator*=(const T scalar) = 0;
 
   virtual Tensor &operator+=(const Tensor &other) = 0;
   virtual Tensor &operator*=(const Tensor &other) = 0;
 
-  Tensor operator+(const T &scalar) const;
-  friend Tensor operator+(const T &scalar, const Tensor &tensor) {
+  Tensor operator+(const T scalar) const;
+  friend Tensor operator+(const T scalar, const Tensor &tensor) {
     return tensor + scalar;
   }
 
-  Tensor &operator-=(const T &scalar);
-  Tensor operator-(const T &scalar) const;
-  friend Tensor operator-(const T &scalar, const Tensor &tensor) {
+  Tensor &operator-=(const T scalar);
+  Tensor operator-(const T scalar) const;
+  friend Tensor operator-(const T scalar, const Tensor &tensor) {
     return tensor + (-scalar);
   }
 
-  Tensor operator*(const T &scalar) const;
-  friend Tensor operator*(const T &scalar, const Tensor &tensor) {
+  Tensor operator*(const T scalar) const;
+  friend Tensor operator*(const T scalar, const Tensor &tensor) {
     return tensor * scalar;
   }
 
-  Tensor &operator/=(const T &scalar);
-  Tensor operator/(const T &scalar) const;
+  Tensor &operator/=(const T scalar);
+  Tensor operator/(const T scalar) const;
 
   Tensor operator+(const Tensor &other) const;
 

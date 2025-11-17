@@ -19,7 +19,7 @@ template <typename T, int Dim>
 Tensor<T, Dim>::Tensor(const std::array<size_t, Dim> &shape,
                        const std::vector<T> &data)
     : Tensor(shape) {
-  if (data.size() != data_.size())
+  if (data.size() != getSize())
     throw std::invalid_argument("Invalid fill data size");
   data_ = data;
 }
@@ -79,15 +79,13 @@ const T &Tensor<T, Dim>::operator()(Indices... indices) const {
 }
 
 // ===== OPERATORS =====
-template <typename T, int Dim>
-Tensor<T, Dim> Tensor<T, Dim>::operator+() const {
+template <typename T, int Dim> Tensor<T, Dim> Tensor<T, Dim>::operator+() {
   Tensor result = *this;
   for (T &e : result.data_)
     e = +e;
   return result;
 }
-template <typename T, int Dim>
-Tensor<T, Dim> Tensor<T, Dim>::operator-() const {
+template <typename T, int Dim> Tensor<T, Dim> Tensor<T, Dim>::operator-() {
   Tensor result = *this;
   for (T &e : result.data_)
     e = -e;
@@ -95,14 +93,14 @@ Tensor<T, Dim> Tensor<T, Dim>::operator-() const {
 }
 
 template <typename T, int Dim>
-Tensor<T, Dim> &Tensor<T, Dim>::operator+=(const T &scalar) {
+Tensor<T, Dim> &Tensor<T, Dim>::operator+=(const T scalar) {
   for (T &e : data_)
     e += scalar;
   return *this;
 }
 
 template <typename T, int Dim>
-Tensor<T, Dim> &Tensor<T, Dim>::operator*=(const T &scalar) {
+Tensor<T, Dim> &Tensor<T, Dim>::operator*=(const T scalar) {
   for (T &e : data_)
     e *= scalar;
   return *this;
@@ -111,7 +109,7 @@ Tensor<T, Dim> &Tensor<T, Dim>::operator*=(const T &scalar) {
 template <typename T, int Dim>
 Tensor<T, Dim> &Tensor<T, Dim>::operator+=(const Tensor &other) {
   checkItHasSameShape(other);
-  for (size_t i = 0; i < data_.size(); ++i)
+  for (size_t i = 0; i < getSize(); ++i)
     data_[i] += other.data_[i];
   return *this;
 }
@@ -119,7 +117,7 @@ Tensor<T, Dim> &Tensor<T, Dim>::operator+=(const Tensor &other) {
 template <typename T, int Dim>
 Tensor<T, Dim> &Tensor<T, Dim>::operator*=(const Tensor &other) {
   checkItHasSameShape(other);
-  for (size_t i = 0; i < data_.size(); ++i)
+  for (size_t i = 0; i < getSize(); ++i)
     data_[i] *= other.data_[i];
   return *this;
 }
@@ -130,10 +128,10 @@ Tensor<T, Dim>::operator%(const Tensor &other) const {
   static_assert(Dim == 1 || Dim == 2,
                 "Inner product is only defined for vectors and matrices");
   if constexpr (Dim == 1) {
-    if (data_.size() != other.data_.size())
+    if (getSize() != other.getSize())
       throw std::invalid_argument("Vector sizes must match for inner product");
     T result_val = T(0);
-    for (size_t i = 0; i < data_.size(); ++i)
+    for (size_t i = 0; i < getSize(); ++i)
       result_val += data_[i] * other.data_[i];
     return Tensor<T, 0>({}, {result_val});
   } else if constexpr (Dim == 2) {
@@ -163,9 +161,9 @@ template <typename T, int Dim> std::string Tensor<T, Dim>::toString() const {
     oss << "Scalar<" << typeid(T).name() << ">: " << data_[0];
   } else if constexpr (Dim == 1) {
     oss << "Vector<" << typeid(T).name() << ">(" << shape_[0] << "): [";
-    for (size_t i = 0; i < data_.size(); ++i) {
+    for (size_t i = 0; i < getSize(); ++i) {
       oss << data_[i];
-      if (i < data_.size() - 1)
+      if (i < getSize() - 1)
         oss << ", ";
     }
     oss << "]";
@@ -189,13 +187,13 @@ template <typename T, int Dim> std::string Tensor<T, Dim>::toString() const {
         oss << "x";
     }
     oss << "]: [";
-    size_t show = std::min(data_.size(), size_t(10));
+    size_t show = std::min(getSize(), size_t(10));
     for (size_t i = 0; i < show; ++i) {
       oss << data_[i];
       if (i < show - 1)
         oss << ", ";
     }
-    if (data_.size() > 10)
+    if (getSize() > 10)
       oss << ", ...";
     oss << "]";
   }

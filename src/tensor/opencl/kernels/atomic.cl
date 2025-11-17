@@ -1,11 +1,11 @@
-__kernel void positive(__global float *A, __global float *B) {
+__kernel void positive(__global float *A) {
   int i = get_global_id(0);
-  B[i] = +A[i];
+  A[i] = +A[i];
 }
 
-__kernel void negative(__global float *A, __global float *B) {
+__kernel void negative(__global float *A) {
   int i = get_global_id(0);
-  B[i] = -A[i];
+  A[i] = -A[i];
 }
 
 

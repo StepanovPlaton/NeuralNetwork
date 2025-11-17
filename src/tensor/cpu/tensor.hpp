@@ -38,12 +38,12 @@ public:
   using ITensor::operator+;
   using ITensor::operator-;
 
-  Tensor operator+() const override;
-  Tensor operator-() const override;
+  Tensor operator+() override;
+  Tensor operator-() override;
 
-  Tensor &operator+=(const T &scalar) override;
+  Tensor &operator+=(const T scalar) override;
 
-  Tensor &operator*=(const T &scalar) override;
+  Tensor &operator*=(const T scalar) override;
 
   Tensor &operator+=(const Tensor &other) override;
 

@@ -102,11 +102,22 @@ OpenCL::OpenCL() {
 
 cl::Program &OpenCL::getProgram(Program program) {
   auto it = programs.find(program);
-  if (it == programs.end()) {
+  if (it == programs.end())
     throw std::invalid_argument("Program not loaded: " +
                                 std::to_string(static_cast<int>(program)));
-  }
   return it->second;
+}
+
+cl::Kernel OpenCL::createKernel(Method method) {
+  auto methodProgram = methodPrograms.find(method);
+  if (methodProgram == methodPrograms.end())
+    throw std::invalid_argument("Not found program for method: " +
+                                std::to_string(static_cast<int>(method)));
+  auto methodName = methodNames.find(method);
+  if (methodName == methodNames.end())
+    throw std::invalid_argument("Not found name for method: " +
+                                std::to_string(static_cast<int>(method)));
+  return cl::Kernel(getProgram(methodProgram->second), methodName->second);
 }
 
 void OpenCL::printDeviceInfo() const {

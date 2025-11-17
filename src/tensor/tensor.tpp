@@ -115,39 +115,39 @@ template <typename T, int Dim> ITensor<T, Dim>::Tensor &ITensor<T, Dim>::t() {
 
 // ===== OPERATORS ======
 template <typename T, int Dim>
-ITensor<T, Dim>::Tensor ITensor<T, Dim>::operator+(const T &scalar) const {
+ITensor<T, Dim>::Tensor ITensor<T, Dim>::operator+(const T scalar) const {
   Tensor result = static_cast<const Tensor &>(*this);
   result += scalar;
   return result;
 }
 
 template <typename T, int Dim>
-ITensor<T, Dim>::Tensor &ITensor<T, Dim>::operator-=(const T &scalar) {
+ITensor<T, Dim>::Tensor &ITensor<T, Dim>::operator-=(const T scalar) {
   *this += -scalar;
   return static_cast<Tensor &>(*this);
 }
 
 template <typename T, int Dim>
-ITensor<T, Dim>::Tensor ITensor<T, Dim>::operator-(const T &scalar) const {
+ITensor<T, Dim>::Tensor ITensor<T, Dim>::operator-(const T scalar) const {
   Tensor result = static_cast<const Tensor &>(*this);
   result -= scalar;
   return result;
 }
 
 template <typename T, int Dim>
-ITensor<T, Dim>::Tensor ITensor<T, Dim>::operator*(const T &scalar) const {
+ITensor<T, Dim>::Tensor ITensor<T, Dim>::operator*(const T scalar) const {
   Tensor result = static_cast<const Tensor &>(*this);
   result *= scalar;
   return result;
 }
 
 template <typename T, int Dim>
-ITensor<T, Dim>::Tensor &ITensor<T, Dim>::operator/=(const T &scalar) {
+ITensor<T, Dim>::Tensor &ITensor<T, Dim>::operator/=(const T scalar) {
   *this *= T(1) / scalar;
   return static_cast<Tensor &>(*this);
 }
 template <typename T, int Dim>
-ITensor<T, Dim>::Tensor ITensor<T, Dim>::operator/(const T &scalar) const {
+ITensor<T, Dim>::Tensor ITensor<T, Dim>::operator/(const T scalar) const {
   Tensor result = static_cast<const Tensor &>(*this);
   result /= scalar;
   return result;

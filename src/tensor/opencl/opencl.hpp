@@ -8,6 +8,15 @@
 
 class OpenCL {
 public:
+  enum class Method {
+    POSITIVE,
+    NEGATIVE,
+    S_ADD,
+    S_MULT,
+    T_ADD,
+    T_HADAMARD,
+    T_MULT,
+  };
   enum class Program { ATOMIC, SCALAR, TENSOR, FUSION };
 
 private:
@@ -21,6 +30,21 @@ private:
       {Program::SCALAR, "./opencl/kernels/scalar.cl"},
       {Program::TENSOR, "./opencl/kernels/tensor.cl"},
       {Program::FUSION, "./opencl/kernels/fusion.cl"}};
+  std::unordered_map<Method, Program> methodPrograms = {
+      {Method::POSITIVE, Program::ATOMIC},
+      {Method::NEGATIVE, Program::ATOMIC},
+      {Method::S_ADD, Program::SCALAR},
+      {Method::S_MULT, Program::SCALAR},
+      {Method::T_ADD, Program::TENSOR},
+      {Method::T_HADAMARD, Program::TENSOR},
+      {Method::T_MULT, Program::TENSOR},
+  };
+  std::unordered_map<Method, std::string> methodNames = {
+      {Method::POSITIVE, "positive"}, {Method::NEGATIVE, "negative"},
+      {Method::S_ADD, "add"},         {Method::S_MULT, "mult"},
+      {Method::T_ADD, "add"},         {Method::T_HADAMARD, "hadamard_mult"},
+      {Method::T_MULT, "mult"},
+  };
 
   std::string readProgram(const std::string &filePath);
   cl::Program compileProgram(const std::string &file);
@@ -41,5 +65,9 @@ public:
   const cl::CommandQueue &getQueue() { return queue; }
 
   cl::Program &getProgram(Program program);
+  cl::Kernel createKernel(Method method);
+
   void printDeviceInfo() const;
 };
+
+OpenCL openCL;
