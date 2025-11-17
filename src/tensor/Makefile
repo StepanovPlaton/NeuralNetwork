@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -Wall -Wextra -O1 -g -std=c++23
+CXXFLAGS = -Wall -Wextra -Wpedantic -O1 -g -std=c++23
 
 ifeq ($(OS),Windows_NT)
     DETECTED_OS := Windows

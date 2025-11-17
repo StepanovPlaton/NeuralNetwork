@@ -2,14 +2,14 @@
 #include <random>
 #include <sstream>
 #include <stdexcept>
-#include <type_traits>
 #include <vector>
 
-template <typename T, int Dim> class Tensor {
-private:
+template <typename T, int Dim> class Tensor;
+
+template <typename T, int Dim> class TensorInfo {
+protected:
   std::array<size_t, Dim> shape_;
   std::array<int, Dim> axes_;
-  std::vector<T> data_;
 
   template <typename... Indices> size_t computeIndex(Indices... indices) const {
     static_assert(sizeof...(Indices) == Dim, "Invalid number of indices");
@@ -26,7 +26,7 @@ private:
     return index;
   }
 
-  void checkItHasSameShape(const Tensor &other) {
+  void checkItHasSameShape(const TensorInfo &other) {
     if (getShape() != other.getShape())
       throw std::invalid_argument("Tensor shapes must match");
   }
@@ -36,83 +36,50 @@ private:
   }
 
 public:
-  Tensor() = delete;
-  Tensor(const std::array<size_t, Dim> &shape) {
+  typedef class Tensor<T, Dim> Ten;
+
+  TensorInfo() = delete;
+
+  TensorInfo(const std::array<size_t, Dim> &shape) {
     for (size_t d : shape)
       if (d == 0)
         throw std::invalid_argument("Invalid shape");
     shape_ = shape;
     for (int i = 0; i < Dim; ++i)
       axes_[i] = i;
-    size_t total_size = 1;
-    for (size_t dim : shape)
-      total_size *= dim;
-    data_.resize(total_size);
-  }
-  Tensor(const std::array<size_t, Dim> &shape, T fill) : Tensor(shape) {
-    std::fill(data_.begin(), data_.end(), fill);
-  }
-  Tensor(const std::array<size_t, Dim> &shape, const std::vector<T> &data)
-      : Tensor(shape) {
-    if (data.size() != data_.size())
-      throw std::invalid_argument("Invalid data size");
-    data_ = data;
-  }
-  Tensor(const std::array<size_t, Dim> &shape, T min, T max) : Tensor(shape) {
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
-    if constexpr (std::is_integral_v<T>) {
-      std::uniform_int_distribution<T> dis(min, max);
-      for (auto &element : data_)
-        element = dis(gen);
-    } else if constexpr (std::is_floating_point_v<T>) {
-      std::uniform_real_distribution<T> dis(min, max);
-      for (auto &element : data_)
-        element = dis(gen);
-    } else
-      throw std::invalid_argument("Invalid randomized type");
   }
 
-  Tensor(const Tensor &other)
-      : shape_(other.shape_), axes_(other.axes_), data_(other.data_) {}
-  Tensor &operator=(const Tensor &other) {
+  TensorInfo(const TensorInfo &other)
+      : shape_(other.shape_), axes_(other.axes_) {}
+  TensorInfo &operator=(const TensorInfo &other) {
     shape_ = other.shape_;
     axes_ = other.axes_;
-    data_ = other.data_;
     return *this;
   }
-  Tensor(Tensor &&other) noexcept
-      : shape_(std::move(other.shape_)), axes_(std::move(other.axes_)),
-        data_(std::move(other.data_)) {}
-  Tensor &operator=(Tensor &&other) noexcept {
+  TensorInfo(TensorInfo &&other) noexcept
+      : shape_(std::move(other.shape_)), axes_(std::move(other.axes_)) {}
+  TensorInfo &operator=(TensorInfo &&other) noexcept {
     shape_ = std::move(other.shape_);
     axes_ = std::move(other.axes_);
-    data_ = std::move(other.data_);
     return *this;
   }
-  ~Tensor() = default;
+  ~TensorInfo() = default;
 
   const std::array<int, Dim> &getAxes() const { return axes_; }
-  const std::vector<T> &getData() const { return data_; }
-  size_t getSize() const { return data_.size(); }
   const std::array<size_t, Dim> getShape() const {
     std::array<size_t, Dim> result;
     for (int i = 0; i < Dim; ++i)
       result[i] = shape_[axes_[i]];
     return result;
   }
+  size_t getSize() const {
+    size_t size = 1;
+    for (size_t i = 0; i < shape_.size(); ++i)
+      size *= shape_[i];
+    return size;
+  };
 
-  T &operator[](size_t i) { return data_[i]; }
-  const T &operator[](size_t i) const { return data_[i]; }
-
-  template <typename... Indices> T &operator()(Indices... indices) {
-    return data_[computeIndex(indices...)];
-  }
-  template <typename... Indices> const T &operator()(Indices... indices) const {
-    return data_[computeIndex(indices...)];
-  }
-
-  Tensor &transpose(const std::array<int, Dim> &new_axes) {
+  Ten &transpose(const std::array<int, Dim> &new_axes) {
     std::array<bool, Dim> used{};
     for (int axis : new_axes) {
       checkAxisInDim(axis);
@@ -121,122 +88,208 @@ public:
       used[axis] = true;
     }
     axes_ = new_axes;
-    return *this;
+    return static_cast<Ten &>(*this);
   }
-  Tensor &transpose(int axis_a, int axis_b) {
+  Ten &transpose(int axis_a, int axis_b) {
     checkAxisInDim(axis_a);
     checkAxisInDim(axis_b);
     if (axis_a == axis_b)
       throw std::invalid_argument("Duplicate axis index");
     std::swap(axes_[axis_a], axes_[axis_b]);
-    return *this;
+    return static_cast<Ten &>(*this);
   }
-  Tensor &t() {
+  Ten &t() {
     static_assert(Dim >= 2, "Can't change the only axis");
     std::swap(axes_[Dim - 1], axes_[Dim - 2]);
-    return *this;
+    return static_cast<Ten &>(*this);
   }
 
-  Tensor operator+() const { return *this; }
-  Tensor operator-() const {
+  virtual Ten operator+() const = 0;
+  virtual Ten operator-() const = 0;
+
+  virtual Ten &operator+=(const T &scalar) = 0;
+  virtual Ten &operator*=(const T &scalar) = 0;
+
+  Ten operator+(const T &scalar) const {
+    Ten result = static_cast<const Ten &>(*this);
+    result += scalar;
+    return result;
+  }
+  friend Ten operator+(const T &scalar, const Ten &tensor) {
+    return tensor + scalar;
+  }
+
+  Ten &operator-=(const T &scalar) {
+    *this += -scalar;
+    return static_cast<Ten &>(*this);
+  }
+  Ten operator-(const T &scalar) const {
+    Ten result = static_cast<const Ten &>(*this);
+    result -= scalar;
+    return result;
+  }
+  friend Ten operator-(const T &scalar, const Ten &tensor) {
+    return tensor + (-scalar);
+  }
+
+  Ten operator*(const T &scalar) const {
+    Ten result = static_cast<const Ten &>(*this);
+    result *= scalar;
+    return result;
+  }
+  friend Ten operator*(const T &scalar, const Ten &tensor) {
+    return tensor * scalar;
+  }
+
+  Ten &operator/=(const T &scalar) {
+    *this *= T(1) / scalar;
+    return static_cast<Ten &>(*this);
+  }
+  Ten operator/(const T &scalar) const {
+    Ten result = static_cast<const Ten &>(*this);
+    result /= scalar;
+    return result;
+  }
+
+  virtual Ten &operator+=(const Ten &other) = 0;
+  virtual Ten &operator*=(const Ten &other) = 0;
+
+  Ten operator+(const Ten &other) const {
+    Ten result = static_cast<const Ten &>(*this);
+    result += other;
+    return result;
+  }
+
+  Ten &operator-=(const Ten &other) {
+    checkItHasSameShape(other);
+    *this += -other;
+    return static_cast<Ten &>(*this);
+  }
+  Ten operator-(const Ten &other) const {
+    Ten result = static_cast<const Ten &>(*this);
+    result -= other;
+    return result;
+  }
+
+  Ten operator*(const Ten &other) const {
+    Ten result = static_cast<const Ten &>(*this);
+    result *= other;
+    return result;
+  }
+
+  virtual std::string toString() const = 0;
+};
+
+template <typename T, int Dim> class Tensor : public TensorInfo<T, Dim> {
+private:
+  std::vector<T> data_;
+
+public:
+  typedef class TensorInfo<T, Dim> TensorInfo;
+
+  using TensorInfo::axes_;
+  using TensorInfo::checkAxisInDim;
+  using TensorInfo::checkItHasSameShape;
+  using TensorInfo::computeIndex;
+  using TensorInfo::getSize;
+  using TensorInfo::shape_;
+
+  Tensor() = delete;
+
+  Tensor(const std::array<size_t, Dim> &shape) : TensorInfo(shape) {
+    size_t size = 1;
+    for (size_t dim : shape)
+      size *= dim;
+    data_.resize(size);
+  }
+  Tensor(const std::array<size_t, Dim> &shape, T value) : Tensor(shape) {
+    std::fill(data_.begin(), data_.end(), value);
+  }
+  Tensor(const std::array<size_t, Dim> &shape, const std::vector<T> &data)
+      : Tensor(shape) {
+    if (data.size() != data_.size())
+      throw std::invalid_argument("Invalid fill data size");
+    data_ = data;
+  }
+  Tensor(const std::array<size_t, Dim> &shape, T min, T max) : Tensor(shape) {
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    if constexpr (std::is_integral_v<T>) {
+      std::uniform_int_distribution<T> dis(min, max);
+      for (T &e : data_)
+        e = dis(gen);
+    } else if constexpr (std::is_floating_point_v<T>) {
+      std::uniform_real_distribution<T> dis(min, max);
+      for (T &e : data_)
+        e = dis(gen);
+    } else
+      throw std::invalid_argument("Invalid randomized type");
+  }
+
+  Tensor(const Tensor &other) : TensorInfo(other), data_(other.data_) {}
+  Tensor &operator=(const Tensor &other) {
+    TensorInfo::operator=(other);
+    data_ = other.data_;
+    return *this;
+  }
+  Tensor(Tensor &&other) noexcept
+      : TensorInfo(std::move(other)), data_(std::move(other.data_)) {}
+  Tensor &operator=(Tensor &&other) noexcept {
+    TensorInfo::operator=(std::move(other));
+    data_ = std::move(other.data_);
+    return *this;
+  }
+  ~Tensor() = default;
+
+  T &operator[](size_t i) { return data_[i]; }
+  const T &operator[](size_t i) const { return data_[i]; }
+  template <typename... Indices> T &operator()(Indices... indices) {
+    return data_[computeIndex(indices...)];
+  }
+  template <typename... Indices> const T &operator()(Indices... indices) const {
+    return data_[computeIndex(indices...)];
+  }
+
+  using TensorInfo::operator+;
+  using TensorInfo::operator-;
+
+  Tensor operator+() const override {
+    Tensor result = *this;
+    for (T &e : result.data_)
+      e = +e;
+    return result;
+  }
+  Tensor operator-() const override {
     Tensor result = *this;
     for (T &e : result.data_)
       e = -e;
     return result;
   }
 
-  Tensor &operator+=(const T &scalar) {
+  Tensor &operator+=(const T &scalar) override {
     for (T &e : data_)
       e += scalar;
     return *this;
   }
-  Tensor operator+(const T &scalar) const {
-    Tensor result = *this;
-    result += scalar;
-    return result;
-  }
-  friend Tensor operator+(const T &scalar, const Tensor &tensor) {
-    return tensor + scalar;
-  }
 
-  Tensor &operator-=(const T &scalar) {
-    for (T &e : data_)
-      e -= scalar;
-    return *this;
-  }
-  Tensor operator-(const T &scalar) const {
-    Tensor result = *this;
-    result -= scalar;
-    return result;
-  }
-  friend Tensor operator-(const T &scalar, const Tensor &tensor) {
-    Tensor result = tensor;
-    for (T &e : result.data_)
-      e = scalar - e;
-    return result;
-  }
-
-  Tensor &operator*=(const T &scalar) {
+  Tensor &operator*=(const T &scalar) override {
     for (T &e : data_)
       e *= scalar;
     return *this;
   }
-  Tensor operator*(const T &scalar) const {
-    Tensor result = *this;
-    result *= scalar;
-    return result;
-  }
-  friend Tensor operator*(const T &scalar, const Tensor &tensor) {
-    return tensor * scalar;
-  }
 
-  Tensor &operator/=(const T &scalar) {
-    if (scalar == T(0))
-      throw std::invalid_argument("Division by zero");
-    for (T &e : data_)
-      e /= scalar;
-    return *this;
-  }
-  Tensor operator/(const T &scalar) const {
-    Tensor result = *this;
-    result /= scalar;
-    return result;
-  }
-
-  Tensor &operator+=(const Tensor &other) {
+  Tensor &operator+=(const Tensor &other) override {
     checkItHasSameShape(other);
     for (size_t i = 0; i < data_.size(); ++i)
       data_[i] += other.data_[i];
     return *this;
   }
-  Tensor operator+(const Tensor &other) const {
-    Tensor result = *this;
-    result += other;
-    return result;
-  }
 
-  Tensor &operator-=(const Tensor &other) {
-    checkItHasSameShape(other);
-    for (size_t i = 0; i < data_.size(); ++i)
-      data_[i] -= other.data_[i];
-    return *this;
-  }
-  Tensor operator-(const Tensor &other) const {
-    Tensor result = *this;
-    result -= other;
-    return result;
-  }
-
-  Tensor &operator*=(const Tensor &other) {
+  Tensor &operator*=(const Tensor &other) override {
     checkItHasSameShape(other);
     for (size_t i = 0; i < data_.size(); ++i)
       data_[i] *= other.data_[i];
     return *this;
-  }
-  Tensor operator*(const Tensor &other) const {
-    Tensor result = *this;
-    result *= other;
-    return result;
   }
 
   Tensor<T, Dim == 1 ? 0 : 2> operator%(const Tensor &other) const {
@@ -270,7 +323,7 @@ public:
     }
   }
 
-  std::string toString() const {
+  std::string toString() const override {
     std::ostringstream oss;
     if constexpr (Dim == 0) {
       oss << "Scalar<" << typeid(T).name() << ">: " << data_[0];
