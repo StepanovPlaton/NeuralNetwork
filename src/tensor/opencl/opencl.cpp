@@ -27,9 +27,9 @@ cl::Program OpenCL::compileProgram(const std::string &file) {
   }
   return program;
 }
-void OpenCL::loadPrograms() {
+void OpenCL::loadPrograms(std::string &programsBasePath) {
   for (const auto &entry : programPaths) {
-    programs[entry.first] = compileProgram(entry.second);
+    programs[entry.first] = compileProgram(programsBasePath + entry.second);
     std::cout << "Loaded program: " << entry.second << std::endl;
   }
 }
@@ -89,10 +89,12 @@ void OpenCL::initializeDevice() {
             << " MB" << std::endl;
 }
 
-OpenCL::OpenCL() {
+OpenCL::OpenCL() {}
+
+void OpenCL::init(std::string programsBasePath) {
   try {
     initializeDevice();
-    loadPrograms();
+    loadPrograms(programsBasePath);
   } catch (const cl::Error &e) {
     std::cerr << "OpenCL error: " << e.what() << " (" << e.err() << ")"
               << std::endl;

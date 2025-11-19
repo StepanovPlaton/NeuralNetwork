@@ -19,27 +19,37 @@ else
 endif
 
 BUILD_DIR = build
-COMMON_SRC = opencl/opencl.cpp
+COMMON_SRC = 
+OPENCL_SRC = opencl/opencl.cpp
 
 PYTHON_PATH = $(shell python -c "from sysconfig import get_paths; print(get_paths()['data'])")
-PYTHON_INCLUDE = $(shell python -c "import sysconfig; print(sysconfig.get_config_var('CONFINCLUDEPY'))")
-PYTHON_LIBS = $(PYTHON_PATH)$(SP)libs
+PYTHON_INCLUDE = $(shell python -c "import sysconfig; print(sysconfig.get_config_var([k for k in sysconfig.get_config_vars().keys() if 'INCLUDE' in k][0]))")
+PYTHON_LIB_PATH = $(PYTHON_PATH)$(SP)libs
+PYTHON_LIB = -lpython313 #-lpython3.13
+
 PYBIND_INCLUDE = $(shell python -c "import pybind11; print(pybind11.get_include())")
 
 OPENCL_INCLUDES = -I"A:/Programs/OpenCL/include" 
-OPENCL_LIB_PATH = -L"A:/Programs/OpenCL/lib" -lOpenCL
-OPENCL_LIB = -L"A:/Programs/OpenCL/lib" -lOpenCL
+OPENCL_LIB_PATH = -L"A:/Programs/OpenCL/lib"
+OPENCL_LIB = -lOpenCL
 
-.DEFAULT_GOAL := $(TARGET)
+.DEFAULT_GOAL := cpu
 
 $(BUILD_DIR):
 	$(MKDIR) $(BUILD_DIR)
 
-$(TARGET): $(COMMON_SRC) main.cpp | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) $(OPENCL_INCLUDES) $(OPENCL_LIB_PATH) -o $@ $^ $(OPENCL_LIB)
+cpu: $(COMMON_SRC) main.cpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -DUSE_CPU -o $(TARGET) $^ 
 
-module: $(COMMON_SRC) pybind.cpp | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -shared -fPIC -o tensor.$(SHARED_LIB_EXT) $^ -I"$(PYTHON_INCLUDE)" -L"$(PYTHON_LIBS)" -lpython3.13 -I"$(PYBIND_INCLUDE)"
+opencl: $(COMMON_SRC) $(OPENCL_SRC) main.cpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -DUSE_OPENCL $(OPENCL_INCLUDES) $(OPENCL_LIB_PATH) -o $(TARGET) $^ $(OPENCL_LIB)
+
+cpu_module: $(COMMON_SRC) pybind.cpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -DUSE_CPU -shared -fPIC -I"$(PYTHON_INCLUDE)" -I"$(PYBIND_INCLUDE)" -L"$(PYTHON_LIB_PATH)" -o tensor.$(SHARED_LIB_EXT) $^ $(PYTHON_LIB)
+	PYTHONPATH=. pybind11-stubgen tensor -o .
+
+opencl_module: $(COMMON_SRC) $(OPENCL_SRC) pybind.cpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -DUSE_OPENCL -shared -fPIC -I"$(PYTHON_INCLUDE)" -I"$(PYBIND_INCLUDE)" -L"$(PYTHON_LIB_PATH)" $(OPENCL_INCLUDES) $(OPENCL_LIB_PATH) -o tensor.$(SHARED_LIB_EXT) $^ $(PYTHON_LIB) $(OPENCL_LIB)
 	PYTHONPATH=. pybind11-stubgen tensor -o .
 
 clean:

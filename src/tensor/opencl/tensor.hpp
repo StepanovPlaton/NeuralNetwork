@@ -4,13 +4,12 @@
 
 #include "../tensor.hpp"
 
-#include <iostream>
 #include <random>
-#include <sstream>
+
 template <typename T, int Dim> class Tensor : public ITensor<T, Dim> {
 private:
   cl::Buffer *data_ = nullptr;
-  cl::Event event_ = cl::Event();
+  mutable cl::Event event_ = cl::Event();
 
   class AutoEventList {
   private:
@@ -114,16 +113,10 @@ public:
   const cl::Buffer *getData() const { return data_; }
   const cl::Event &getEvent() const { return event_; }
 
-  // T &operator[](size_t i);
-  // const T &operator[](size_t i) const;
-  // template <typename... Indices> T &operator()(Indices... indices);
-  // template <typename... Indices> const T &operator()(Indices... indices)
-  // const;
-
   using ITensor::operator+;
   using ITensor::operator-;
 
-  Tensor operator+() override {
+  Tensor operator+() const override {
     cl::Kernel kernel = openCL.createKernel(OpenCL::Method::POSITIVE);
     kernel.setArg(0, *data_);
     openCL.getQueue().enqueueNDRangeKernel(kernel, cl::NullRange,
@@ -132,7 +125,7 @@ public:
     return *this;
   }
 
-  Tensor operator-() override {
+  Tensor operator-() const override {
     cl::Kernel kernel = openCL.createKernel(OpenCL::Method::NEGATIVE);
     kernel.setArg(0, *data_);
     openCL.getQueue().enqueueNDRangeKernel(kernel, cl::NullRange,
@@ -191,17 +184,17 @@ public:
       if (shape_[axes_[1]] != other.shape_[other.axes_[0]])
         throw std::invalid_argument(
             "Matrix dimensions must match for multiplication");
-      int m = (int)shape_[axes_[0]];
-      int k = (int)shape_[axes_[1]];
-      int n = (int)other.shape_[other.axes_[1]];
+      size_t m = shape_[axes_[0]];
+      size_t k = shape_[axes_[1]];
+      size_t n = other.shape_[other.axes_[1]];
       Tensor<T, 2> result({m, n});
       cl::Kernel kernel = openCL.createKernel(OpenCL::Method::T_MULT);
       kernel.setArg(0, *data_);
       kernel.setArg(1, *other.getData());
       kernel.setArg(2, *result.getData());
-      kernel.setArg(3, m);
-      kernel.setArg(4, n);
-      kernel.setArg(5, k);
+      kernel.setArg(3, (int)m);
+      kernel.setArg(4, (int)n);
+      kernel.setArg(5, (int)k);
       cl::NDRange global_size(((m + TILE_SIZE - 1) / TILE_SIZE) * TILE_SIZE,
                               ((n + TILE_SIZE - 1) / TILE_SIZE) * TILE_SIZE);
       cl::NDRange local_size(TILE_SIZE, TILE_SIZE);
@@ -214,50 +207,11 @@ public:
 
   std::string toString() const override {
     std::vector<float> result(getSize());
-    openCL.getQueue().enqueueReadBuffer(
-        *data_, CL_TRUE, 0, getSize() * sizeof(T), result.data(), all(event_));
-    std::ostringstream oss;
-    if constexpr (Dim == 0) {
-      oss << "Scalar<" << typeid(T).name() << ">: " << result[0];
-    } else if constexpr (Dim == 1) {
-      oss << "Vector<" << typeid(T).name() << ">(" << shape_[0] << "): [";
-      for (size_t i = 0; i < getSize(); ++i) {
-        oss << result[i];
-        if (i < getSize() - 1)
-          oss << ", ";
-      }
-      oss << "]";
-    } else if constexpr (Dim == 2) {
-      oss << "Matrix<" << typeid(T).name() << ">(" << shape_[axes_[0]] << "x"
-          << shape_[axes_[1]] << "):";
-      for (size_t i = 0; i < shape_[axes_[0]]; ++i) {
-        oss << "\n  [";
-        for (size_t j = 0; j < shape_[axes_[1]]; ++j) {
-          oss << result[i * shape_[axes_[0]] + j];
-          if (j < shape_[axes_[1]] - 1)
-            oss << ", ";
-        }
-        oss << "]";
-      }
-    } else {
-      oss << "Tensor" << Dim << "D<" << typeid(T).name() << ">" << "[";
-      for (size_t i = 0; i < Dim; ++i) {
-        oss << shape_[axes_[i]];
-        if (i < Dim - 1)
-          oss << "x";
-      }
-      oss << "]: [";
-      size_t show = std::min(getSize(), size_t(10));
-      for (size_t i = 0; i < show; ++i) {
-        oss << result[i];
-        if (i < show - 1)
-          oss << ", ";
-      }
-      if (getSize() > 10)
-        oss << ", ...";
-      oss << "]";
-    }
-    return oss.str();
+    openCL.getQueue().enqueueReadBuffer(*data_, CL_FALSE, 0,
+                                        getSize() * sizeof(T), result.data(),
+                                        all(event_), &event_);
+    event_.wait();
+    return ITensor::format(result);
   }
 };
 

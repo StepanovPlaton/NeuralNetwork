@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <string>
+#include <vector>
 
 template <typename T, int Dim> class Tensor;
 
@@ -15,6 +16,8 @@ protected:
 
   void checkItHasSameShape(const ITensor &other) const;
   void checkAxisInDim(int axis) const;
+
+  std::string format(std::vector<T> data) const;
 
 public:
   typedef class Tensor<T, Dim> Tensor;
@@ -35,8 +38,8 @@ public:
   Tensor &transpose(int axis_a, int axis_b);
   Tensor &t();
 
-  virtual Tensor operator+() = 0;
-  virtual Tensor operator-() = 0;
+  virtual Tensor operator+() const = 0;
+  virtual Tensor operator-() const = 0;
 
   virtual Tensor &operator+=(const T scalar) = 0;
   virtual Tensor &operator*=(const T scalar) = 0;

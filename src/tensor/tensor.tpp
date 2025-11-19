@@ -2,6 +2,8 @@
 
 #include "tensor.hpp"
 
+#include <iomanip>
+#include <sstream>
 #include <stdexcept>
 
 // ===== UTILS =====
@@ -32,6 +34,117 @@ template <typename T, int Dim>
 void ITensor<T, Dim>::checkAxisInDim(int axis) const {
   if (axis < 0 || axis >= Dim)
     throw std::invalid_argument("Invalid axis index");
+}
+
+template <typename T, int Dim>
+std::string ITensor<T, Dim>::format(std::vector<T> data) const {
+  std::ostringstream oss;
+  static auto formatValue = [](T value) -> std::string {
+    std::ostringstream value_oss;
+    if constexpr (std::is_floating_point_v<T>) {
+      value_oss << std::fixed << std::setprecision(3) << value;
+      std::string str = value_oss.str();
+      if (str.find('.') != std::string::npos) {
+        str = str.substr(0, str.find_last_not_of('0') + 1);
+        if (str.back() == '.')
+          str.pop_back();
+      }
+      return str;
+    } else {
+      value_oss << value;
+      return value_oss.str();
+    }
+  };
+
+  if constexpr (Dim == 0) {
+    oss << "Scalar<" << typeid(T).name() << ">: " << formatValue(data[0]);
+  } else if constexpr (Dim == 1) {
+    oss << "Vector<" << typeid(T).name() << ">(" << shape_[0] << "): [";
+    for (size_t i = 0; i < getSize(); ++i) {
+      oss << formatValue(data[i]);
+      if (i < getSize() - 1)
+        oss << ", ";
+    }
+    oss << "]";
+  } else if constexpr (Dim == 2) {
+    const size_t rows = shape_[axes_[0]];
+    const size_t cols = shape_[axes_[1]];
+    oss << "Matrix<" << typeid(T).name() << ">(" << rows << "x" << cols << "):";
+
+    const size_t MAX_FULL_ROWS = 8;
+    const size_t MAX_FULL_COLS = 8;
+    const size_t SHOW_FIRST = 3;
+    const size_t SHOW_LAST = 3;
+    bool show_abbreviated_rows = rows > MAX_FULL_ROWS;
+    bool show_abbreviated_cols = cols > MAX_FULL_COLS;
+    std::vector<std::string> formatted_values;
+    size_t max_width = 0;
+    for (size_t i = 0; i < rows; ++i) {
+      if (show_abbreviated_rows && i >= SHOW_FIRST && i < rows - SHOW_LAST)
+        continue;
+      for (size_t j = 0; j < cols; ++j) {
+        if (show_abbreviated_cols && j >= SHOW_FIRST && j < cols - SHOW_LAST)
+          continue;
+        std::string formatted = formatValue(data[i * cols + j]);
+        formatted_values.push_back(formatted);
+        max_width = std::max(max_width, formatted.length());
+      }
+    }
+    for (size_t i = 0; i < rows; ++i) {
+      if (show_abbreviated_rows && i >= SHOW_FIRST && i < rows - SHOW_LAST) {
+        if (i == SHOW_FIRST) {
+          oss << "\n  ";
+          for (size_t j = 0; j < cols; ++j) {
+            if (show_abbreviated_cols && j >= SHOW_FIRST &&
+                j < cols - SHOW_LAST) {
+              if (j == SHOW_FIRST)
+                oss << std::string(max_width, '.') << ", ";
+              continue;
+            }
+            oss << std::string(max_width, '.');
+            if (!((!show_abbreviated_cols && j == cols - 1) ||
+                  (show_abbreviated_cols &&
+                   ((j < SHOW_FIRST && j == SHOW_FIRST - 1) || j == cols - 1))))
+              oss << ", ";
+          }
+        }
+        continue;
+      }
+      oss << "\n  [";
+      for (size_t j = 0; j < cols; ++j) {
+        if (show_abbreviated_cols && j >= SHOW_FIRST && j < cols - SHOW_LAST) {
+          if (j == SHOW_FIRST)
+            oss << " " << std::setw(max_width) << std::left << "..." << ", ";
+          continue;
+        }
+        std::string formatted = formatValue(data[i * cols + j]);
+        oss << std::setw(max_width) << std::left << formatted;
+        if (!((!show_abbreviated_cols && j == cols - 1) ||
+              (show_abbreviated_cols &&
+               ((j < SHOW_FIRST && j == SHOW_FIRST - 1) || j == cols - 1))))
+          oss << ", ";
+      }
+      oss << "]";
+    }
+  } else {
+    oss << "Tensor" << Dim << "D<" << typeid(T).name() << ">" << "[";
+    for (size_t i = 0; i < Dim; ++i) {
+      oss << shape_[axes_[i]];
+      if (i < Dim - 1)
+        oss << "x";
+    }
+    oss << "]: [";
+    size_t show = std::min(getSize(), size_t(10));
+    for (size_t i = 0; i < show; ++i) {
+      oss << formatValue(data[i]);
+      if (i < show - 1)
+        oss << ", ";
+    }
+    if (getSize() > 10)
+      oss << ", ...";
+    oss << "]";
+  }
+  return oss.str();
 }
 
 // ====== CONSTRUCT =====

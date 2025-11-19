@@ -26,10 +26,10 @@ private:
 
   std::unordered_map<Program, cl::Program> programs;
   std::unordered_map<Program, std::string> programPaths = {
-      {Program::ATOMIC, "./opencl/kernels/atomic.cl"},
-      {Program::SCALAR, "./opencl/kernels/scalar.cl"},
-      {Program::TENSOR, "./opencl/kernels/tensor.cl"},
-      {Program::FUSION, "./opencl/kernels/fusion.cl"}};
+      {Program::ATOMIC, "opencl/kernels/atomic.cl"},
+      {Program::SCALAR, "opencl/kernels/scalar.cl"},
+      {Program::TENSOR, "opencl/kernels/tensor.cl"},
+      {Program::FUSION, "opencl/kernels/fusion.cl"}};
   std::unordered_map<Method, Program> methodPrograms = {
       {Method::POSITIVE, Program::ATOMIC},
       {Method::NEGATIVE, Program::ATOMIC},
@@ -48,12 +48,14 @@ private:
 
   std::string readProgram(const std::string &filePath);
   cl::Program compileProgram(const std::string &file);
-  void loadPrograms();
+  void loadPrograms(std::string &programsBasePath);
 
   void initializeDevice();
 
 public:
   OpenCL();
+
+  void init(std::string programsBasePath);
 
   OpenCL(const OpenCL &) = delete;
   OpenCL &operator=(const OpenCL &) = delete;
