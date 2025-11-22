@@ -5,26 +5,26 @@ import time
 if (MODE == PLATFORM.OPENCL):
     init("./tensor/")
 
-a = Matrix([1024, 1024], 1)
-b = Matrix([1024, 1024], 1)
+a = Matrix([4096*4, 4096*4], 1)
+b = Matrix([4096*4, 4096*4], 1)
 
 
 def benchmark_tensor():
-    c = ((a @ b) @ (a @ b)) @ ((a @ b) @ (a @ b))
+    c = a + b
     return c
 
 
-a_np = np.ones([1024, 1024], dtype=np.float32)
-b_np = np.ones([1024, 1024], dtype=np.float32)
+a_np = np.ones([4096*4, 4096*4], dtype=np.float32)
+b_np = np.ones([4096*4, 4096*4], dtype=np.float32)
 
 
 def benchmark_numpy():
-    c = ((a_np @ b_np) @ (a_np @ b_np)) @ ((a_np @ b_np) @ (a_np @ b_np))
+    c = a_np + b_np
     return c
 
 
 # Многократное выполнение для более точного измерения
-iterations = 5
+iterations = 2
 
 print("Бенчмарк Tensor:")
 tensor_times = []
