@@ -1,66 +1,23 @@
 #include "opencl.hpp"
 
-#include <fstream>
 #include <iostream>
-#include <sstream>
 #include <stdexcept>
 
-std::string OpenCL::readProgram(const std::string &filePath) {
-  std::ifstream file(filePath, std::ios::binary);
-  if (!file.is_open()) {
-    throw std::runtime_error("Cannot open file: " + filePath);
-  }
-
-  std::stringstream buffer;
-  buffer << file.rdbuf();
-  return buffer.str();
-}
-cl::Program OpenCL::compileProgram(const std::string &file) {
-  std::string source = readProgram(file);
-  cl::Program program(context, source);
+OpenCL::OpenCL() {
   try {
-    program.build({device});
-  } catch (cl::Error &e) {
-    std::string build_log = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
-    std::cerr << "Build log:\n" << build_log << std::endl;
-    throw;
-  }
-  return program;
-}
-void OpenCL::loadPrograms(std::string &programsBasePath) {
-  for (const auto &entry : programPaths) {
-    programs[entry.first] = compileProgram(programsBasePath + entry.second);
-    std::cout << "Loaded program: " << entry.second << std::endl;
-  }
-}
+    std::vector<cl::Platform> platforms;
+    cl::Platform::get(&platforms);
 
-void OpenCL::initializeDevice() {
-  std::vector<cl::Platform> platforms;
-  cl::Platform::get(&platforms);
-
-  if (platforms.empty()) {
-    throw std::runtime_error("No OpenCL platforms found");
-  }
-
-  std::vector<cl::Device> devices;
-  bool deviceFound = false;
-
-  for (const auto &platform : platforms) {
-    try {
-      platform.getDevices(CL_DEVICE_TYPE_GPU, &devices);
-      if (!devices.empty()) {
-        deviceFound = true;
-        break;
-      }
-    } catch (const cl::Error &) {
-      continue;
+    if (platforms.empty()) {
+      throw std::runtime_error("No OpenCL platforms found");
     }
-  }
 
-  if (!deviceFound) {
+    std::vector<cl::Device> devices;
+    bool deviceFound = false;
+
     for (const auto &platform : platforms) {
       try {
-        platform.getDevices(CL_DEVICE_TYPE_CPU, &devices);
+        platform.getDevices(CL_DEVICE_TYPE_GPU, &devices);
         if (!devices.empty()) {
           deviceFound = true;
           break;
@@ -69,57 +26,34 @@ void OpenCL::initializeDevice() {
         continue;
       }
     }
-  }
 
-  if (!deviceFound) {
-    throw std::runtime_error("No suitable OpenCL devices found");
-  }
+    if (!deviceFound) {
+      for (const auto &platform : platforms) {
+        try {
+          platform.getDevices(CL_DEVICE_TYPE_CPU, &devices);
+          if (!devices.empty()) {
+            deviceFound = true;
+            break;
+          }
+        } catch (const cl::Error &) {
+          continue;
+        }
+      }
+    }
 
-  device = devices[0];
-  context = cl::Context(device);
-  queue =
-      cl::CommandQueue(context, device, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE);
+    if (!deviceFound) {
+      throw std::runtime_error("No suitable OpenCL devices found");
+    }
 
-  std::cout << "Using device: " << device.getInfo<CL_DEVICE_NAME>()
-            << "\nPlatform: " << platforms[0].getInfo<CL_PLATFORM_NAME>()
-            << "\nCompute units: "
-            << device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>()
-            << "\nGlobal memory: "
-            << device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>() / (1024 * 1024)
-            << " MB" << std::endl;
-}
-
-OpenCL::OpenCL() {}
-
-void OpenCL::init(std::string programsBasePath) {
-  try {
-    initializeDevice();
-    loadPrograms(programsBasePath);
+    device = devices[0];
+    context = cl::Context(device);
+    queue = cl::CommandQueue(context, device,
+                             CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE);
   } catch (const cl::Error &e) {
     std::cerr << "OpenCL error: " << e.what() << " (" << e.err() << ")"
               << std::endl;
     throw;
   }
-}
-
-cl::Program &OpenCL::getProgram(Program program) {
-  auto it = programs.find(program);
-  if (it == programs.end())
-    throw std::invalid_argument("Program not loaded: " +
-                                std::to_string(static_cast<int>(program)));
-  return it->second;
-}
-
-cl::Kernel OpenCL::createKernel(Method method) {
-  auto methodProgram = methodPrograms.find(method);
-  if (methodProgram == methodPrograms.end())
-    throw std::invalid_argument("Not found program for method: " +
-                                std::to_string(static_cast<int>(method)));
-  auto methodName = methodNames.find(method);
-  if (methodName == methodNames.end())
-    throw std::invalid_argument("Not found name for method: " +
-                                std::to_string(static_cast<int>(method)));
-  return cl::Kernel(getProgram(methodProgram->second), methodName->second);
 }
 
 void OpenCL::printDeviceInfo() const {
