@@ -125,12 +125,6 @@ PYBIND11_MODULE(tensor, m) {
   register_tensor<float, 2>(m, "Matrix");
   register_tensor<float, 3>(m, "Tensor3");
 
-#ifdef USE_OPENCL
-  m.def("init", [](const std::string &programsBasePath) {
-    openCL.init(programsBasePath);
-  });
-#endif
-
 #ifndef USE_OPENCL
   register_tensor<double, 0>(m, "dScalar");
   register_tensor<double, 1>(m, "dVector");

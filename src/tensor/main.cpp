@@ -1,7 +1,6 @@
 #ifdef USE_OPENCL
 #include "opencl/tensor.hpp"
 OpenCL openCL;
-// TODO: GENERIC KERNELS
 // TODO: Scalar mult
 #elif USE_CPU
 #include "cpu/tensor.hpp"
@@ -21,19 +20,21 @@ public:
     auto end = std::chrono::high_resolution_clock::now();
     auto duration =
         std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    std::cout << operation << ": " << duration.count() << " μs\n";
+    std::cout << operation << ": " << duration.count() << " ns\n";
   }
 };
 
 int main() {
 #ifdef USE_OPENCL
-  openCL.init("./");
+  openCL.printDeviceInfo();
 #endif
 
   Tensor<float, 2> a = Tensor<float, 2>({4096 * 2, 4096 * 2}, 1);
   Tensor<float, 2> b = Tensor<float, 2>({4096 * 2, 4096 * 2}, 1);
+  Profiler::measure("Matrix multiplication", [&]() {
+    auto result = a % b;
+    std::cout << result.toString();
+  });
 
-  Profiler::measure("Matrix multiplication", [&]() { auto result = a % b; });
-  std::cout << a.toString();
   return 0;
 }

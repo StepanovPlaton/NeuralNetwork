@@ -71,4 +71,65 @@ void OpenCL::printDeviceInfo() const {
             << std::endl;
   std::cout << "Max Work Group Size: "
             << device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>() << std::endl;
+  std::string extensions = device.getInfo<CL_DEVICE_EXTENSIONS>();
+
+  std::cout << "Optimal vector sizes:" << std::endl;
+  try {
+    cl_uint short_native =
+        device.getInfo<CL_DEVICE_NATIVE_VECTOR_WIDTH_SHORT>();
+    cl_uint short_preferred =
+        device.getInfo<CL_DEVICE_PREFERRED_VECTOR_WIDTH_SHORT>();
+    std::cout << "  short: native=" << short_native
+              << ", preferred=" << short_preferred << std::endl;
+  } catch (const cl::Error &e) {
+    std::cout << "  short: N/A (error: " << e.what() << ")" << std::endl;
+  }
+  try {
+    cl_uint int_native = device.getInfo<CL_DEVICE_NATIVE_VECTOR_WIDTH_INT>();
+    cl_uint int_preferred =
+        device.getInfo<CL_DEVICE_PREFERRED_VECTOR_WIDTH_INT>();
+    std::cout << "  int: native=" << int_native
+              << ", preferred=" << int_preferred << std::endl;
+  } catch (const cl::Error &e) {
+    std::cout << "  int: N/A (error: " << e.what() << ")" << std::endl;
+  }
+  try {
+    if (extensions.find("cl_khr_fp16") != std::string::npos) {
+      cl_uint half_native =
+          device.getInfo<CL_DEVICE_NATIVE_VECTOR_WIDTH_HALF>();
+      cl_uint half_preferred =
+          device.getInfo<CL_DEVICE_PREFERRED_VECTOR_WIDTH_HALF>();
+      std::cout << "  half: native=" << half_native
+                << ", preferred=" << half_preferred << std::endl;
+    } else {
+      std::cout << "  half: not supported" << std::endl;
+    }
+  } catch (const cl::Error &e) {
+    std::cout << "  half: N/A (error: " << e.what() << ")" << std::endl;
+  }
+  try {
+    cl_uint float_native =
+        device.getInfo<CL_DEVICE_NATIVE_VECTOR_WIDTH_FLOAT>();
+    cl_uint float_preferred =
+        device.getInfo<CL_DEVICE_PREFERRED_VECTOR_WIDTH_FLOAT>();
+    std::cout << "  float: native=" << float_native
+              << ", preferred=" << float_preferred << std::endl;
+  } catch (const cl::Error &e) {
+    std::cout << "  float: N/A (error: " << e.what() << ")" << std::endl;
+  }
+  try {
+    if (extensions.find("cl_khr_fp64") != std::string::npos ||
+        device.getInfo<CL_DEVICE_VERSION>().find("1.0") == std::string::npos) {
+      cl_uint double_native =
+          device.getInfo<CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE>();
+      cl_uint double_preferred =
+          device.getInfo<CL_DEVICE_PREFERRED_VECTOR_WIDTH_DOUBLE>();
+      std::cout << "  double: native=" << double_native
+                << ", preferred=" << double_preferred << std::endl;
+    } else {
+      std::cout << "  double: not supported" << std::endl;
+    }
+  } catch (const cl::Error &e) {
+    std::cout << "  double: N/A (error: " << e.what() << ")" << std::endl;
+  }
 }

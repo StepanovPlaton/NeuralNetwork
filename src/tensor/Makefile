@@ -34,6 +34,7 @@ OPENCL_LIB_PATH = -L"A:/Programs/OpenCL/lib"
 OPENCL_LIB = -lOpenCL
 
 .DEFAULT_GOAL := cpu
+.PHONY: cpu opencl cpu_module opencl_module clean
 
 $(BUILD_DIR):
 	$(MKDIR) $(BUILD_DIR)
