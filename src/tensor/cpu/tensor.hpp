@@ -51,6 +51,8 @@ public:
 
   Tensor<T, Dim == 1 ? 0 : 2> operator%(const Tensor &other) const;
 
+  Tensor apply(Function f, bool derivative = false) const override;
+
   std::string toString() const override;
 };
 

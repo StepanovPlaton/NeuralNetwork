@@ -6,6 +6,7 @@
 #include <vector>
 
 template <typename T, int Dim> class Tensor;
+enum class Function { SIGMOID, RELU, MSE, LINEAR };
 
 template <typename T, int Dim> class ITensor {
 protected:
@@ -72,6 +73,8 @@ public:
   Tensor operator-(const Tensor &other) const;
 
   Tensor operator*(const Tensor &other) const;
+
+  virtual Tensor apply(Function f, bool derivative = false) const = 0;
 
   // === Utils ===
   virtual std::string toString() const = 0;

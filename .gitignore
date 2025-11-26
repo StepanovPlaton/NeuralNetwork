@@ -3,5 +3,6 @@
 *.exe
 *.so
 *.pyd
+*pyi
 
 src/tensor/build

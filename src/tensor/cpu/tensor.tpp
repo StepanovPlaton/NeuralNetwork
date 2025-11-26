@@ -149,12 +149,47 @@ Tensor<T, Dim>::operator%(const Tensor &other) const {
       for (size_t j = 0; j < p; ++j) {
         T sum = T(0);
         for (size_t k = 0; k < n; ++k)
-          sum += (*this)(i, k) * other(k, j);
-        result(i, j) = sum;
+          sum += (*this)[i * n + k] * other[k * p + j];
+        result[i * p + j] = sum;
       }
     }
     return result;
   }
+}
+
+template <typename T, int Dim>
+Tensor<T, Dim> Tensor<T, Dim>::apply(Function f, bool derivative) const {
+  Tensor result = *this;
+  auto func = [f, derivative](T x) -> T {
+    switch (f) {
+    case Function::SIGMOID:
+      if (!derivative)
+        return T(1) / (T(1) + std::exp(-x));
+      else {
+        T sigmoid = T(1) / (T(1) + std::exp(-x));
+        return sigmoid * (T(1) - sigmoid);
+      }
+    case Function::RELU:
+      if (!derivative)
+        return std::max(T(0), x);
+      else
+        return (x > T(0)) ? T(1) : T(0);
+    case Function::MSE:
+      if (!derivative)
+        return x * x;
+      else
+        return T(2) * x;
+    case Function::LINEAR:
+    default:
+      if (!derivative)
+        return x;
+      else
+        return T(1);
+    }
+  };
+  for (size_t i = 0; i < getSize(); ++i)
+    result[i] = func((*this)[i]);
+  return result;
 }
 
 // ===== UTILS =====

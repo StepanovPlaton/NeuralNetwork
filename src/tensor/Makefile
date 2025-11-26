@@ -54,4 +54,4 @@ opencl_module: $(COMMON_SRC) $(OPENCL_SRC) pybind.cpp | $(BUILD_DIR)
 	PYTHONPATH=. pybind11-stubgen tensor -o .
 
 clean:
-	rm -rf $(BUILD_DIR) $(TARGET) *.$(SHARED_LIB_EXT)
+	rm -rf $(BUILD_DIR) $(TARGET) *.$(SHARED_LIB_EXT) *.pyi

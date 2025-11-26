@@ -13,6 +13,8 @@ private:
 public:
   OpenCL();
 
+  void init();
+
   OpenCL(const OpenCL &) = delete;
   OpenCL &operator=(const OpenCL &) = delete;
   OpenCL(OpenCL &&) = delete;

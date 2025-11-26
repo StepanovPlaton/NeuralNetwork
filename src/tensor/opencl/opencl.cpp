@@ -3,18 +3,16 @@
 #include <iostream>
 #include <stdexcept>
 
-OpenCL::OpenCL() {
+OpenCL::OpenCL() {}
+
+void OpenCL::init() {
   try {
     std::vector<cl::Platform> platforms;
     cl::Platform::get(&platforms);
-
-    if (platforms.empty()) {
+    if (platforms.empty())
       throw std::runtime_error("No OpenCL platforms found");
-    }
-
     std::vector<cl::Device> devices;
     bool deviceFound = false;
-
     for (const auto &platform : platforms) {
       try {
         platform.getDevices(CL_DEVICE_TYPE_GPU, &devices);
@@ -26,7 +24,6 @@ OpenCL::OpenCL() {
         continue;
       }
     }
-
     if (!deviceFound) {
       for (const auto &platform : platforms) {
         try {
@@ -40,12 +37,10 @@ OpenCL::OpenCL() {
         }
       }
     }
-
-    if (!deviceFound) {
+    if (!deviceFound)
       throw std::runtime_error("No suitable OpenCL devices found");
-    }
-
     device = devices[0];
+    printDeviceInfo();
     context = cl::Context(device);
     queue = cl::CommandQueue(context, device,
                              CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE);

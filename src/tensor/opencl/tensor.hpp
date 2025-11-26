@@ -45,8 +45,12 @@ private:
                                         all(other.getEvent()), &event_);
   }
 
+  constexpr const static Kernels<T>::Vector vector = Kernels<T>::Vector::type1;
+  constexpr const static int vectorSize = (int)vector;
+  constexpr const static int tileSize = vectorSize * 4;
+
   static cl::Kernel createKernel(Kernels<T>::Method method) {
-    static Kernels<T> kernels(Kernels<T>::Vector::type4);
+    static Kernels<T> kernels(vector);
     return kernels.create(method);
   }
 
@@ -56,7 +60,7 @@ public:
   using ITensor::axes_;
   using ITensor::checkAxisInDim;
   using ITensor::checkItHasSameShape;
-  using ITensor::computeIndex;
+  // using ITensor::computeIndex;
   using ITensor::getSize;
   using ITensor::shape_;
 
@@ -124,30 +128,32 @@ public:
   using ITensor::operator-;
 
   Tensor operator+() const override {
+    Tensor result = *this;
     cl::Kernel kernel = createKernel(Kernels<T>::Method::POSITIVE);
-    kernel.setArg(0, *data_);
-    kernel.setArg(1, (int)getSize());
-    openCL.getQueue().enqueueNDRangeKernel(kernel, cl::NullRange,
-                                           cl::NDRange(getSize()),
-                                           cl::NullRange, all(event_), &event_);
-    return *this;
+    kernel.setArg(0, *result.getData());
+    kernel.setArg(1, (int)result.getSize());
+    openCL.getQueue().enqueueNDRangeKernel(
+        kernel, cl::NullRange, cl::NDRange(result.getSize()), cl::NullRange,
+        all(result.event_), &result.event_);
+    return result;
   }
 
   Tensor operator-() const override {
+    Tensor result = *this;
     cl::Kernel kernel = createKernel(Kernels<T>::Method::NEGATIVE);
-    kernel.setArg(0, *data_);
-    kernel.setArg(1, (int)getSize());
-    openCL.getQueue().enqueueNDRangeKernel(kernel, cl::NullRange,
-                                           cl::NDRange(getSize()),
-                                           cl::NullRange, all(event_), &event_);
-    return *this;
+    kernel.setArg(0, *result.getData());
+    kernel.setArg(1, (int)result.getSize());
+    openCL.getQueue().enqueueNDRangeKernel(
+        kernel, cl::NullRange, cl::NDRange(result.getSize()), cl::NullRange,
+        all(result.event_), &result.event_);
+    return result;
   }
 
   Tensor &operator+=(const T scalar) override {
     cl::Kernel kernel = createKernel(Kernels<T>::Method::S_ADD);
     kernel.setArg(0, *data_);
-    kernel.setArg(1, scalar);
-    kernel.setArg(2, (int)getSize());
+    kernel.setArg(1, (int)getSize());
+    kernel.setArg(2, scalar);
     openCL.getQueue().enqueueNDRangeKernel(kernel, cl::NullRange,
                                            cl::NDRange(getSize()),
                                            cl::NullRange, all(event_), &event_);
@@ -157,8 +163,8 @@ public:
   Tensor &operator*=(const T scalar) override {
     cl::Kernel kernel = createKernel(Kernels<T>::Method::S_MULT);
     kernel.setArg(0, *data_);
-    kernel.setArg(1, scalar);
-    kernel.setArg(2, (int)getSize());
+    kernel.setArg(1, (int)getSize());
+    kernel.setArg(2, scalar);
     openCL.getQueue().enqueueNDRangeKernel(kernel, cl::NullRange,
                                            cl::NDRange(getSize()),
                                            cl::NullRange, all(event_), &event_);
@@ -166,6 +172,7 @@ public:
   }
 
   Tensor &operator+=(const Tensor &other) override {
+    checkItHasSameShape(other);
     cl::Kernel kernel = createKernel(Kernels<T>::Method::T_ADD);
     kernel.setArg(0, *data_);
     kernel.setArg(1, *other.getData());
@@ -177,18 +184,17 @@ public:
   }
 
   Tensor &operator*=(const Tensor &other) override {
+    checkItHasSameShape(other);
     cl::Kernel kernel = createKernel(Kernels<T>::Method::T_HADAMARD);
     kernel.setArg(0, *data_);
     kernel.setArg(1, *other.getData());
-    kernel.setArg(2, getSize());
+    kernel.setArg(2, (int)getSize());
     openCL.getQueue().enqueueNDRangeKernel(
         kernel, cl::NullRange, cl::NDRange(getSize()), cl::NullRange,
         all(event_, other.event_), &event_);
     return *this;
   }
 
-#define TILE_SIZE 16
-#define VEC_SIZE 4
   Tensor<T, Dim == 1 ? 0 : 2> operator%(const Tensor &other) const {
     static_assert(Dim == 1 || Dim == 2,
                   "Inner product is only defined for vectors and matrices");
@@ -209,17 +215,28 @@ public:
       kernel.setArg(3, (int)m);
       kernel.setArg(4, (int)n);
       kernel.setArg(5, (int)k);
-      cl::NDRange global_size(m / VEC_SIZE, n);
-      cl::NDRange local_size(TILE_SIZE / VEC_SIZE, TILE_SIZE);
+      cl::NDRange globalSize(m, n);
       openCL.getQueue().enqueueNDRangeKernel(
-          kernel, cl::NullRange, global_size, local_size,
+          kernel, cl::NullRange, globalSize, cl::NullRange,
           all(event_, other.event_), &result.event_);
       return result;
     }
   }
 
+  Tensor apply(Function f, bool derivative = false) const override {
+    Tensor result = *this;
+    cl::Kernel kernel = createKernel(Kernels<T>::Method::FUNC);
+    kernel.setArg(0, *result.getData());
+    kernel.setArg(1, (int)f);
+    kernel.setArg(2, (int)derivative);
+    openCL.getQueue().enqueueNDRangeKernel(
+        kernel, cl::NullRange, cl::NDRange(result.getSize()), cl::NullRange,
+        all(result.event_), &result.event_);
+    return result;
+  };
+
   std::string toString() const override {
-    std::vector<float> result(getSize());
+    std::vector<T> result(getSize());
     openCL.getQueue().enqueueReadBuffer(*data_, CL_FALSE, 0,
                                         getSize() * sizeof(T), result.data(),
                                         all(event_), &event_);

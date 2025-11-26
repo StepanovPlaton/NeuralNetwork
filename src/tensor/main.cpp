@@ -20,20 +20,22 @@ public:
     auto end = std::chrono::high_resolution_clock::now();
     auto duration =
         std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    std::cout << operation << ": " << duration.count() << " ns\n";
+    std::cout << operation << ": " << duration.count() / 1000000.0f << "s\n";
   }
 };
 
 int main() {
 #ifdef USE_OPENCL
-  openCL.printDeviceInfo();
+  openCL.init();
 #endif
 
-  Tensor<float, 2> a = Tensor<float, 2>({4096 * 2, 4096 * 2}, 1);
-  Tensor<float, 2> b = Tensor<float, 2>({4096 * 2, 4096 * 2}, 1);
-  Profiler::measure("Matrix multiplication", [&]() {
-    auto result = a % b;
-    std::cout << result.toString();
+  Tensor<float, 2> a = Tensor<float, 2>({2, 3}, 0, 1);
+  std::cout << a.toString() << std::endl;
+  Tensor<float, 2> b = Tensor<float, 2>({2, 3}, 0, 1);
+  std::cout << b.toString() << std::endl;
+  Profiler::measure("Time", [&]() {
+    auto result = a * b;
+    std::cout << result.toString() << std::endl;
   });
 
   return 0;

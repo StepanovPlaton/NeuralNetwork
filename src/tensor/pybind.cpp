@@ -4,6 +4,7 @@
 
 #ifdef USE_OPENCL
 #include "opencl/tensor.hpp"
+#include <iostream>
 OpenCL openCL;
 #elif USE_CPU
 #include "cpu/tensor.hpp"
@@ -15,40 +16,48 @@ enum class TENSOR_PLATFORM { CPU, OPENCL };
 
 template <typename T, int Dim>
 void register_tensor(py::module &m, const std::string &name) {
-  auto tensor = py::class_<Tensor<T, Dim>>(m, name.c_str())
-                    .def(py::init<const std::array<size_t, Dim> &>())
-                    .def(py::init<const std::array<size_t, Dim> &, T>())
-                    .def(py::init<const std::array<size_t, Dim> &,
-                                  const std::vector<T> &>())
-                    .def(py::init<const std::array<size_t, Dim> &, T, T>())
+  auto tensor =
+      py::class_<Tensor<T, Dim>>(m, name.c_str())
+          .def(py::init<const std::array<size_t, Dim> &>())
+          .def(py::init<const std::array<size_t, Dim> &, T>())
+          .def(py::init<const std::array<size_t, Dim> &,
+                        const std::vector<T> &>())
+          .def(py::init<const std::array<size_t, Dim> &, T, T>())
 
-                    .def("get_shape", &Tensor<T, Dim>::getShape)
-                    .def("get_axes", &Tensor<T, Dim>::getAxes)
-                    .def("get_size", &Tensor<T, Dim>::getSize)
+          .def("get_shape", &Tensor<T, Dim>::getShape)
+          .def("get_axes", &Tensor<T, Dim>::getAxes)
+          .def("get_size", &Tensor<T, Dim>::getSize)
 
-                    .def(py::self + py::self)
-                    .def(py::self - py::self)
-                    .def(py::self * py::self)
-                    .def(py::self += py::self)
-                    .def(py::self -= py::self)
-                    .def(py::self *= py::self)
+          .def(py::self + py::self)
+          .def(py::self - py::self)
+          .def(py::self * py::self)
+          .def(py::self += py::self)
+          .def(py::self -= py::self)
+          .def(py::self *= py::self)
 
-                    .def(py::self + T())
-                    .def(py::self - T())
-                    .def(py::self * T())
-                    .def(py::self / T())
-                    .def(py::self += T())
-                    .def(py::self -= T())
-                    .def(py::self *= T())
-                    .def(py::self /= T())
-                    .def(T() + py::self)
-                    .def(T() - py::self)
-                    .def(T() * py::self)
+          .def(py::self + T())
+          .def(py::self - T())
+          .def(py::self * T())
+          .def(py::self / T())
+          .def(py::self += T())
+          .def(py::self -= T())
+          .def(py::self *= T())
+          .def(py::self /= T())
+          .def(T() + py::self)
+          .def(T() - py::self)
+          .def(T() * py::self)
 
-                    .def("__pos__", [](const Tensor<T, Dim> &t) { return +t; })
-                    .def("__neg__", [](const Tensor<T, Dim> &t) { return -t; })
+          .def("__pos__", [](const Tensor<T, Dim> &t) { return +t; })
+          .def("__neg__", [](const Tensor<T, Dim> &t) { return -t; })
 
-                    .def("__repr__", &Tensor<T, Dim>::toString);
+          .def("__call__", [](const Tensor<T, Dim> &self,
+                              Function f) { return self.apply(f); })
+          .def("__call__",
+               [](const Tensor<T, Dim> &self, Function f, bool derivative) {
+                 return self.apply(f, derivative);
+               })
+
+          .def("__repr__", &Tensor<T, Dim>::toString);
 
   if constexpr (Dim >= 2) {
     tensor
@@ -101,7 +110,6 @@ void register_tensor(py::module &m, const std::string &name) {
              });
 #endif
 
-  // if constexpr (Dim == 1 || Dim == 2)
   if constexpr (Dim == 2)
     tensor.def("__matmul__", &Tensor<T, Dim>::operator%);
 }
@@ -114,10 +122,21 @@ PYBIND11_MODULE(tensor, m) {
       .value("OPENCL", TENSOR_PLATFORM::OPENCL)
       .export_values();
 
+  py::enum_<Function>(m, "FUNCTION")
+      .value("SIGMOID", Function::SIGMOID)
+      .value("RELU", Function::RELU)
+      .value("MSE", Function::MSE)
+      .value("LINEAR", Function::LINEAR)
+      .export_values();
+
 #ifdef USE_OPENCL
   m.attr("MODE") = TENSOR_PLATFORM::OPENCL;
 #elif USE_CPU
   m.attr("MODE") = TENSOR_PLATFORM::CPU;
+#endif
+
+#ifdef USE_OPENCL
+  m.def("init", []() { openCL.init(); });
 #endif
 
   register_tensor<float, 0>(m, "Scalar");
@@ -125,7 +144,6 @@ PYBIND11_MODULE(tensor, m) {
   register_tensor<float, 2>(m, "Matrix");
   register_tensor<float, 3>(m, "Tensor3");
 
-#ifndef USE_OPENCL
   register_tensor<double, 0>(m, "dScalar");
   register_tensor<double, 1>(m, "dVector");
   register_tensor<double, 2>(m, "dMatrix");
@@ -135,5 +153,11 @@ PYBIND11_MODULE(tensor, m) {
   register_tensor<int, 1>(m, "iVector");
   register_tensor<int, 2>(m, "iMatrix");
   register_tensor<int, 3>(m, "iTensor3");
+
+#ifdef USE_OPENCL
+  register_tensor<half, 0>(m, "hScalar");
+  register_tensor<half, 1>(m, "hVector");
+  register_tensor<half, 2>(m, "hMatrix");
+  register_tensor<half, 3>(m, "hTensor3");
 #endif
 }
