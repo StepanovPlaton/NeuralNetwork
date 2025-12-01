@@ -1,4 +1,4 @@
-import tensor.tensor as T
+import tensor as T
 
 if (T.MODE == T.PLATFORM.OPENCL):
     T.init()
@@ -45,7 +45,7 @@ class NN:
 
         lossVector = self.layers[len(self.layers) -
                                  1].outputs - target
-        # print("loss", lossVector(T.FUNCTION.MSE))
+        print("loss", lossVector(T.FUNCTION.MSE))
         dAnl = lossVector(T.FUNCTION.MSE, True)
         for i in range(len(self.layers)-1, -1, -1):
             dZl = dAnl * \
@@ -55,7 +55,7 @@ class NN:
             dbl = dZl
             # dbl = dZl.sum(axis=1).reshape(dZl.shape[0], 1)
             dAnl = self.layers[i].weights.t() @ dZl
-            self.layers[i].weights.t()
+            print(self.layers[i].weights)
             self.layers[i].weights += (dWl * -0.3)
             self.layers[i].bias += (dbl * -0.3)
 
